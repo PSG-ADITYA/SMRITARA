@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
+import { audioService } from '../../engine/audioService';
 import type { MemoryGameType } from '../../types';
 
 // Cultural and philosophical passages for verbal memory
@@ -51,7 +52,7 @@ const CULTURAL_PASSAGES = [
 ];
 
 export const MemoryGymView: React.FC = () => {
-  const { recordMemorySession, memorySessions } = useApp();
+  const { recordMemorySession, memorySessions, soundEnabled, celebrationsEnabled } = useApp();
 
   const [activeGame, setActiveGame] = useState<MemoryGameType>('matrix');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
@@ -78,8 +79,22 @@ export const MemoryGymView: React.FC = () => {
   const [accuracy, setAccuracy] = useState<number>(0);
   const [startTime, setStartTime] = useState<number>(0);
 
+  // Sound triggers
+  const playInteractionClick = () => {
+    if (soundEnabled) audioService.playClick();
+  };
+
+  const playSuccess = () => {
+    if (soundEnabled) audioService.playSuccessBell();
+  };
+
+  const playMistake = () => {
+    if (soundEnabled) audioService.playSoftMistake();
+  };
+
   // ---- 1. Matrix Grid Game Logic ----
   const startMatrixGame = () => {
+    if (soundEnabled) audioService.playStartChime();
     const totalCells = gridSize * gridSize;
     const randomTiles: number[] = [];
     while (randomTiles.length < targetTilesCount) {
@@ -108,11 +123,11 @@ export const MemoryGymView: React.FC = () => {
     if (gameState !== 'recall') return;
     if (userSelectedTiles.includes(index)) return;
 
+    playInteractionClick();
     const newSelected = [...userSelectedTiles, index];
     setUserSelectedTiles(newSelected);
 
     if (newSelected.length === activeTiles.length) {
-      // Validate
       const correctHits = newSelected.filter(t => activeTiles.includes(t)).length;
       const acc = Math.round((correctHits / activeTiles.length) * 100);
       const score = Math.round(acc * (difficulty === 'hard' ? 1.2 : difficulty === 'medium' ? 1.0 : 0.8));
@@ -122,6 +137,13 @@ export const MemoryGymView: React.FC = () => {
       setGameScore(score);
       setGameState('result');
 
+      if (acc >= 70) {
+        playSuccess();
+        if (celebrationsEnabled) confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+      } else {
+        playMistake();
+      }
+
       recordMemorySession({
         date: new Date().toISOString().split('T')[0],
         gameType: 'matrix',
@@ -130,17 +152,16 @@ export const MemoryGymView: React.FC = () => {
         accuracy: acc,
         timeSpentSeconds: elapsed
       });
-
-      if (acc >= 80) confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
     }
   };
 
   // ---- 2. Sequence Game Logic ----
   const startSequenceGame = () => {
+    if (soundEnabled) audioService.playStartChime();
     const seqLen = difficulty === 'easy' ? 4 : difficulty === 'medium' ? 6 : 8;
     const newSeq: number[] = [];
     for (let i = 0; i < seqLen; i++) {
-      newSeq.push(Math.floor(Math.random() * 4)); // 4 pads: 0, 1, 2, 3
+      newSeq.push(Math.floor(Math.random() * 4));
     }
 
     setSequence(newSeq);
@@ -148,10 +169,10 @@ export const MemoryGymView: React.FC = () => {
     setGameState('memorize');
     setStartTime(Date.now());
 
-    // Playback sequence flashes
     newSeq.forEach((pad, index) => {
       setTimeout(() => {
         setFlashingPad(pad);
+        playInteractionClick();
         setTimeout(() => setFlashingPad(null), 400);
       }, (index + 1) * 700);
     });
@@ -164,6 +185,7 @@ export const MemoryGymView: React.FC = () => {
   const handlePadClick = (padIndex: number) => {
     if (gameState !== 'recall') return;
 
+    playInteractionClick();
     setFlashingPad(padIndex);
     setTimeout(() => setFlashingPad(null), 250);
 
@@ -172,13 +194,13 @@ export const MemoryGymView: React.FC = () => {
 
     const currentIndex = nextUserSeq.length - 1;
     if (nextUserSeq[currentIndex] !== sequence[currentIndex]) {
-      // Wrong tap
+      playMistake();
       finishSequenceGame(nextUserSeq, false);
       return;
     }
 
     if (nextUserSeq.length === sequence.length) {
-      // Success!
+      playSuccess();
       finishSequenceGame(nextUserSeq, true);
     }
   };
@@ -202,17 +224,21 @@ export const MemoryGymView: React.FC = () => {
       timeSpentSeconds: elapsed
     });
 
-    if (isPerfect) confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+    if (isPerfect && celebrationsEnabled) {
+      confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
+    }
   };
 
   // ---- 3. Cultural Passage Logic ----
   const startPassageGame = () => {
+    if (soundEnabled) audioService.playStartChime();
     setPassageAnswers({});
     setGameState('memorize');
     setStartTime(Date.now());
   };
 
   const handlePassageAnswer = (blankId: number, selectedText: string) => {
+    playInteractionClick();
     setPassageAnswers(prev => ({ ...prev, [blankId]: selectedText }));
   };
 
@@ -231,6 +257,13 @@ export const MemoryGymView: React.FC = () => {
     setGameScore(score);
     setGameState('result');
 
+    if (acc === 100) {
+      playSuccess();
+      if (celebrationsEnabled) confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+    } else {
+      playMistake();
+    }
+
     recordMemorySession({
       date: new Date().toISOString().split('T')[0],
       gameType: 'passages',
@@ -239,72 +272,66 @@ export const MemoryGymView: React.FC = () => {
       accuracy: acc,
       timeSpentSeconds: elapsed
     });
-
-    if (acc === 100) confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
   };
 
   return (
-    <div>
+    <div style={{ maxWidth: '880px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Disclaimer Alert */}
-      <div style={{
+      <div className="clean-card" style={{
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
-        background: 'rgba(139, 92, 246, 0.08)',
-        border: '1px solid rgba(139, 92, 246, 0.25)',
-        borderRadius: 'var(--radius-md)',
-        padding: '12px 18px',
-        marginBottom: '24px'
+        background: '#FFFFFF',
+        borderColor: 'var(--border-subtle)',
+        padding: '12px 18px'
       }}>
-        <AlertCircle size={18} color="var(--primary-light)" />
-        <span style={{ fontSize: '0.85rem', color: '#e9d5ff' }}>
-          <strong>Cognitive Engagement Notice:</strong> Memory Gym exercises provide healthy working memory and attention stimulation inspired by Smriti Veda. They are deterministic skill challenges and do not claim to prevent, treat, or diagnose clinical dementia.
+        <AlertCircle size={18} color="var(--primary)" style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+          <strong style={{ color: 'var(--text-main)' }}>Cognitive Engagement Notice: </strong> Memory Gym exercises provide focused working memory and attention practice inspired by Smriti Veda. They are deterministic skill challenges and do not claim to treat, prevent, or diagnose medical conditions.
         </span>
       </div>
 
       {/* Game Selector Tabs */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        <button
-          onClick={() => { setActiveGame('matrix'); setGameState('idle'); }}
-          className={`btn ${activeGame === 'matrix' ? 'btn-primary' : 'btn-secondary'}`}
-        >
-          <Grid3X3 size={16} />
-          <span>Pattern Matrix Recall</span>
-        </button>
-        <button
-          onClick={() => { setActiveGame('sequence'); setGameState('idle'); }}
-          className={`btn ${activeGame === 'sequence' ? 'btn-primary' : 'btn-secondary'}`}
-        >
-          <Layers size={16} />
-          <span>Chime Sequence Recall</span>
-        </button>
-        <button
-          onClick={() => { setActiveGame('passages'); setGameState('idle'); }}
-          className={`btn ${activeGame === 'passages' ? 'btn-primary' : 'btn-secondary'}`}
-        >
-          <BookOpen size={16} />
-          <span>Cultural Passage Recall</span>
-        </button>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {[
+          { id: 'matrix', label: 'Pattern Matrix Recall', icon: Grid3X3 },
+          { id: 'sequence', label: 'Chime Sequence Recall', icon: Layers },
+          { id: 'passages', label: 'Cultural Passage Recall', icon: BookOpen }
+        ].map(t => {
+          const Icon = t.icon;
+          const isActive = activeGame === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => { setActiveGame(t.id as MemoryGameType); setGameState('idle'); }}
+              className={`btn ${isActive ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem' }}
+            >
+              <Icon size={15} />
+              <span>{t.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Main Game Card */}
-      <div className="glass-card" style={{ maxWidth: '820px', margin: '0 auto', padding: '36px', textAlign: 'center' }}>
+      {/* Main Game Container */}
+      <div className="clean-card" style={{ padding: '32px', textAlign: 'center', background: '#FFFFFF' }}>
         {/* Header Controls */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Brain size={22} color="var(--primary-light)" />
-            <h3 style={{ fontSize: '1.35rem', fontWeight: 800 }}>
+            <Brain size={20} color="var(--primary)" />
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
               {activeGame === 'matrix' ? 'Spatial Matrix Memory' : activeGame === 'sequence' ? 'Sequential Sound & Color Memory' : 'Verbal & Philosophical Retention'}
             </h3>
           </div>
 
-          <div style={{ display: 'flex', gap: '6px' }}>
+          <div style={{ display: 'flex', gap: '4px' }}>
             {(['easy', 'medium', 'hard'] as const).map(diff => (
               <button
                 key={diff}
                 onClick={() => { setDifficulty(diff); setGameState('idle'); }}
                 className={`btn btn-sm ${difficulty === diff ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ textTransform: 'capitalize', padding: '4px 10px', fontSize: '0.75rem' }}
+                style={{ textTransform: 'capitalize', padding: '4px 10px', fontSize: '0.74rem' }}
               >
                 {diff}
               </button>
@@ -316,12 +343,12 @@ export const MemoryGymView: React.FC = () => {
         {activeGame === 'matrix' && (
           <div>
             {gameState === 'idle' && (
-              <div style={{ padding: '32px 0' }}>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: '520px', margin: '0 auto 24px auto' }}>
-                  A pattern of highlighted tiles will illuminate for <strong>3 seconds</strong>. Once they vanish, tap the matching grid tiles from working memory.
+              <div style={{ padding: '24px 0' }}>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '480px', margin: '0 auto 20px auto', lineHeight: 1.5 }}>
+                  A pattern of illuminated tiles will appear for <strong>3 seconds</strong>. Once they vanish, tap the matching grid locations from working memory.
                 </p>
-                <button onClick={startMatrixGame} className="btn btn-primary" style={{ padding: '12px 32px' }}>
-                  <Play size={18} />
+                <button onClick={startMatrixGame} className="btn btn-primary" style={{ padding: '10px 28px', fontSize: '0.88rem' }}>
+                  <Play size={16} />
                   <span>Begin Challenge</span>
                 </button>
               </div>
@@ -329,16 +356,16 @@ export const MemoryGymView: React.FC = () => {
 
             {(gameState === 'memorize' || gameState === 'recall') && (
               <div>
-                <div style={{ marginBottom: '16px', fontSize: '1rem', fontWeight: 700, color: gameState === 'memorize' ? '#f59e0b' : '#34d399' }}>
-                  {gameState === 'memorize' ? `Memorize the tiles! (${matrixTimer}s)` : 'Tap all the illuminated tiles from memory!'}
+                <div style={{ marginBottom: '16px', fontSize: '0.95rem', fontWeight: 700, color: gameState === 'memorize' ? 'var(--accent-amber)' : 'var(--primary)' }}>
+                  {gameState === 'memorize' ? `Memorize the tiles! (${matrixTimer}s)` : 'Tap all the target tiles from memory!'}
                 </div>
 
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
-                  gap: '10px',
-                  maxWidth: '380px',
-                  margin: '0 auto 28px auto'
+                  gap: '8px',
+                  maxWidth: '320px',
+                  margin: '0 auto 24px auto'
                 }}>
                   {Array.from({ length: gridSize * gridSize }).map((_, idx) => {
                     const isTarget = activeTiles.includes(idx);
@@ -351,14 +378,11 @@ export const MemoryGymView: React.FC = () => {
                         onClick={() => handleTileClick(idx)}
                         style={{
                           aspectRatio: '1',
-                          borderRadius: '12px',
-                          background: showTile
-                            ? 'linear-gradient(135deg, var(--primary) 0%, var(--accent-teal) 100%)'
-                            : 'var(--bg-card-inner)',
+                          borderRadius: '8px',
+                          background: showTile ? 'var(--primary)' : 'var(--bg-card-inner)',
                           border: `2px solid ${showTile ? 'var(--primary-light)' : 'var(--border-subtle)'}`,
                           cursor: gameState === 'recall' ? 'pointer' : 'default',
-                          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                          boxShadow: showTile ? '0 0 16px var(--primary-glow)' : 'none'
+                          transition: 'all 0.15s ease'
                         }}
                       />
                     );
@@ -373,12 +397,12 @@ export const MemoryGymView: React.FC = () => {
         {activeGame === 'sequence' && (
           <div>
             {gameState === 'idle' && (
-              <div style={{ padding: '32px 0' }}>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: '520px', margin: '0 auto 24px auto' }}>
-                  Watch the illuminated sequence of colored pads. Once the playback completes, reproduce the exact rhythm and order without mistakes.
+              <div style={{ padding: '24px 0' }}>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '480px', margin: '0 auto 20px auto', lineHeight: 1.5 }}>
+                  Watch the illuminated sequence of colored pads. Once the playback completes, reproduce the exact order without mistakes.
                 </p>
-                <button onClick={startSequenceGame} className="btn btn-primary" style={{ padding: '12px 32px' }}>
-                  <Play size={18} />
+                <button onClick={startSequenceGame} className="btn btn-primary" style={{ padding: '10px 28px', fontSize: '0.88rem' }}>
+                  <Play size={16} />
                   <span>Start Sequence</span>
                 </button>
               </div>
@@ -386,16 +410,16 @@ export const MemoryGymView: React.FC = () => {
 
             {(gameState === 'memorize' || gameState === 'recall') && (
               <div>
-                <div style={{ marginBottom: '20px', fontSize: '1rem', fontWeight: 700, color: gameState === 'memorize' ? '#f59e0b' : '#34d399' }}>
+                <div style={{ marginBottom: '16px', fontSize: '0.95rem', fontWeight: 700, color: gameState === 'memorize' ? 'var(--accent-amber)' : 'var(--primary)' }}>
                   {gameState === 'memorize' ? 'Observing Sequence...' : `Your turn! Tap sequence (${userSequence.length} / ${sequence.length})`}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', maxWidth: '320px', margin: '0 auto 28px auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', maxWidth: '280px', margin: '0 auto 24px auto' }}>
                   {[
-                    { id: 0, color: '#8b5cf6', label: 'Violet' },
-                    { id: 1, color: '#14b8a6', label: 'Teal' },
-                    { id: 2, color: '#f59e0b', label: 'Amber' },
-                    { id: 3, color: '#f43f5e', label: 'Rose' },
+                    { id: 0, color: '#285443', label: 'Sage' },
+                    { id: 1, color: '#1E7065', label: 'Teal' },
+                    { id: 2, color: '#C68019', label: 'Amber' },
+                    { id: 3, color: '#A04332', label: 'Terracotta' },
                   ].map(pad => {
                     const isLit = flashingPad === pad.id;
                     return (
@@ -403,18 +427,18 @@ export const MemoryGymView: React.FC = () => {
                         key={pad.id}
                         onClick={() => handlePadClick(pad.id)}
                         style={{
-                          height: '130px',
-                          borderRadius: '16px',
+                          height: '110px',
+                          borderRadius: '12px',
                           background: isLit ? pad.color : 'var(--bg-card-inner)',
-                          border: `2px solid ${isLit ? '#ffffff' : 'var(--border-subtle)'}`,
-                          boxShadow: isLit ? `0 0 30px ${pad.color}` : 'none',
-                          transform: isLit ? 'scale(1.04)' : 'scale(1)',
+                          border: `2px solid ${isLit ? '#FFFFFF' : 'var(--border-subtle)'}`,
+                          transform: isLit ? 'scale(1.03)' : 'scale(1)',
                           cursor: gameState === 'recall' ? 'pointer' : 'default',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: '#ffffff',
+                          color: isLit ? '#FFFFFF' : 'var(--text-main)',
                           fontWeight: 700,
+                          fontSize: '0.9rem',
                           transition: 'all 0.15s ease'
                         }}
                       >
@@ -432,34 +456,35 @@ export const MemoryGymView: React.FC = () => {
         {activeGame === 'passages' && (
           <div>
             {gameState === 'idle' && (
-              <div style={{ padding: '24px 0', textAlign: 'left' }}>
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <div style={{ padding: '16px 0', textAlign: 'left' }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
                   {CULTURAL_PASSAGES.map((p, idx) => (
                     <button
                       key={p.id}
                       onClick={() => setSelectedPassageIdx(idx)}
                       className={`btn btn-sm ${selectedPassageIdx === idx ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ fontSize: '0.78rem' }}
                     >
                       {p.origin.split(' ')[0]}
                     </button>
                   ))}
                 </div>
 
-                <div className="glass-card-inner" style={{ padding: '24px', marginBottom: '24px' }}>
+                <div style={{ padding: '20px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card-inner)', border: '1px solid var(--border-subtle)', marginBottom: '20px' }}>
                   <span className="badge badge-teal" style={{ marginBottom: '8px' }}>
                     {CULTURAL_PASSAGES[selectedPassageIdx].origin}
                   </span>
-                  <blockquote style={{ fontSize: '1.25rem', fontStyle: 'italic', color: '#ffffff', margin: '14px 0', lineHeight: 1.6 }}>
+                  <blockquote style={{ fontSize: '1.1rem', fontStyle: 'italic', color: 'var(--text-main)', margin: '12px 0', lineHeight: 1.6 }}>
                     "{CULTURAL_PASSAGES[selectedPassageIdx].quote}"
                   </blockquote>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    Read carefully. When ready, click "Begin Recall" to test retention of core concepts.
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    Read carefully. When ready, click "Begin Recall Challenge" to test concept retention.
                   </p>
                 </div>
 
                 <div style={{ textAlign: 'center' }}>
-                  <button onClick={startPassageGame} className="btn btn-primary" style={{ padding: '12px 32px' }}>
-                    <Play size={18} />
+                  <button onClick={startPassageGame} className="btn btn-primary" style={{ padding: '10px 28px', fontSize: '0.88rem' }}>
+                    <Play size={16} />
                     <span>Begin Recall Challenge</span>
                   </button>
                 </div>
@@ -467,35 +492,34 @@ export const MemoryGymView: React.FC = () => {
             )}
 
             {gameState === 'memorize' && (
-              <div style={{ textAlign: 'left', padding: '16px 0' }}>
-                <div style={{ marginBottom: '20px' }}>
-                  <span className="badge badge-purple">
+              <div style={{ textAlign: 'left', padding: '10px 0' }}>
+                <div style={{ marginBottom: '18px' }}>
+                  <span className="badge badge-teal">
                     {CULTURAL_PASSAGES[selectedPassageIdx].origin}
                   </span>
-                  <h4 style={{ fontSize: '1.15rem', marginTop: '10px', color: 'var(--text-secondary)' }}>
+                  <h4 style={{ fontSize: '1rem', marginTop: '10px', color: 'var(--text-secondary)' }}>
                     Fill in the missing words from memory:
                   </h4>
-                  <div style={{ fontSize: '1.3rem', lineHeight: 1.7, margin: '20px 0', color: '#ffffff' }}>
+                  <div style={{ fontSize: '1.15rem', lineHeight: 1.7, margin: '16px 0', color: 'var(--text-main)' }}>
                     {CULTURAL_PASSAGES[selectedPassageIdx].maskedQuote}
                   </div>
                 </div>
 
-                {/* Multiple choice selection blanks */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '28px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
                   {CULTURAL_PASSAGES[selectedPassageIdx].blanks.map(blank => (
-                    <div key={blank.id} className="glass-card-inner">
-                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-light)', marginBottom: '8px' }}>
+                    <div key={blank.id} style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card-inner)', border: '1px solid var(--border-subtle)' }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '6px' }}>
                         Blank [{blank.id}] Selection:
                       </div>
-                      <div style={{ display: 'flex', gap: '10px' }}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
                         {blank.options.map(opt => {
                           const isPicked = passageAnswers[blank.id] === opt;
                           return (
                             <button
                               key={opt}
                               onClick={() => handlePassageAnswer(blank.id, opt)}
-                              className={`btn btn-sm ${isPicked ? 'btn-teal' : 'btn-secondary'}`}
-                              style={{ padding: '8px 16px' }}
+                              className={`btn btn-sm ${isPicked ? 'btn-primary' : 'btn-secondary'}`}
+                              style={{ padding: '6px 14px', fontSize: '0.8rem' }}
                             >
                               {opt}
                             </button>
@@ -511,7 +535,7 @@ export const MemoryGymView: React.FC = () => {
                     onClick={submitPassageGame}
                     disabled={Object.keys(passageAnswers).length < 3}
                     className="btn btn-primary"
-                    style={{ padding: '12px 32px', opacity: Object.keys(passageAnswers).length < 3 ? 0.4 : 1 }}
+                    style={{ padding: '10px 28px', fontSize: '0.88rem', opacity: Object.keys(passageAnswers).length < 3 ? 0.4 : 1 }}
                   >
                     Submit Retrieval
                   </button>
@@ -523,45 +547,46 @@ export const MemoryGymView: React.FC = () => {
 
         {/* RESULTS SCREEN */}
         {gameState === 'result' && (
-          <div style={{ padding: '28px 0' }}>
+          <div style={{ padding: '24px 0' }}>
             <div style={{
-              width: '72px',
-              height: '72px',
+              width: '56px',
+              height: '56px',
               borderRadius: '50%',
-              background: 'rgba(16, 185, 129, 0.15)',
-              border: '2px solid #10b981',
+              background: 'var(--primary-subtle)',
+              border: '2px solid var(--primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 16px auto'
+              margin: '0 auto 14px auto',
+              color: 'var(--primary)'
             }}>
-              <Award size={36} color="#34d399" />
+              <Award size={28} />
             </div>
 
-            <h3 style={{ fontSize: '1.75rem', fontWeight: 900, marginBottom: '6px' }}>Exercise Complete!</h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>
-              Your cognitive engagement metrics have been saved to your personal history.
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '4px' }}>Session Recorded</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '20px' }}>
+              Your performance measures have been saved to your verified session log.
             </p>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '32px', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '32px', marginBottom: '24px' }}>
               <div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Accuracy</div>
-                <div className="font-mono" style={{ fontSize: '2.2rem', fontWeight: 900, color: '#34d399' }}>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Accuracy</div>
+                <div style={{ fontSize: '1.9rem', fontWeight: 800, color: 'var(--primary)' }}>
                   {accuracy}%
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Score Earned</div>
-                <div className="font-mono" style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--primary-light)' }}>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Score</div>
+                <div style={{ fontSize: '1.9rem', fontWeight: 800, color: 'var(--text-main)' }}>
                   {gameScore}
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
-              <button onClick={() => setGameState('idle')} className="btn btn-primary" style={{ padding: '10px 24px' }}>
-                <RotateCcw size={16} />
-                <span>Play Again</span>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+              <button onClick={() => setGameState('idle')} className="btn btn-primary" style={{ padding: '8px 22px', fontSize: '0.84rem' }}>
+                <RotateCcw size={15} />
+                <span>Practice Again</span>
               </button>
             </div>
           </div>
@@ -569,36 +594,35 @@ export const MemoryGymView: React.FC = () => {
       </div>
 
       {/* Persistent History Table */}
-      <div className="glass-card" style={{ maxWidth: '820px', margin: '28px auto 0 auto' }}>
-        <h4 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '14px' }}>Session History</h4>
+      <div className="clean-card" style={{ padding: '20px 24px' }}>
+        <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '12px' }}>Recent Memory Sessions</h4>
         {memorySessions.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            No sessions played yet. Choose a game above to calibrate your baseline!
+          <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+            No sessions played yet. Complete a game above to establish your baseline.
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {memorySessions.slice(0, 5).map(s => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {memorySessions.slice(0, 4).map(s => (
               <div
                 key={s.id}
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md)',
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius-sm)',
                   background: 'var(--bg-card-inner)',
-                  fontSize: '0.85rem'
+                  fontSize: '0.82rem'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Brain size={16} color="var(--primary-light)" />
-                  <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{s.gameType} Exercise</span>
-                  <span className="badge badge-purple" style={{ fontSize: '0.7rem' }}>{s.difficulty}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Brain size={14} color="var(--primary)" />
+                  <span style={{ fontWeight: 600, textTransform: 'capitalize', color: 'var(--text-main)' }}>{s.gameType}</span>
+                  <span className="badge badge-teal" style={{ fontSize: '0.68rem', textTransform: 'capitalize' }}>{s.difficulty}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <span style={{ color: '#34d399', fontWeight: 700 }}>{s.accuracy}% Acc</span>
-                  <span style={{ color: 'var(--text-secondary)' }}>{s.score} pts</span>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{s.date}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{s.accuracy}% Acc</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{s.date}</span>
                 </div>
               </div>
             ))}

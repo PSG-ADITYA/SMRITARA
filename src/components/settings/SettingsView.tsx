@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { 
   Settings, 
-  Key, 
   Moon, 
   Smartphone, 
   Shield, 
@@ -10,34 +9,79 @@ import {
   Download, 
   Upload, 
   AlertTriangle,
-  Server
+  User,
+  Globe,
+  LogOut,
+  Compass,
+  Volume2,
+  VolumeX,
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import type { InterfaceLanguage } from '../../types';
 
 export const SettingsView: React.FC = () => {
   const { 
     user, 
     updateUserTargets, 
-    setGeminiApiKey, 
+    updateUserSettings,
+    setInterfaceLanguage,
+    soundEnabled,
+    setSoundEnabled,
+    speechRate,
+    setSpeechRate,
+    celebrationsEnabled,
+    setCelebrationsEnabled,
+    ambientEnabled,
+    toggleAmbient,
+    clearCoachChat,
     resetAllData, 
     exportData, 
-    importData 
+    importData,
+    logout,
+    isDemoMode,
+    exitDemoMode
   } = useApp();
 
-  const [sleepTarget, setSleepTarget] = useState(user.targetSleep);
-  const [screenLimit, setScreenLimit] = useState(user.targetScreenTime);
-  const [apiKeyInput, setApiKeyInput] = useState(user.geminiApiKey || '');
+  const [sleepTarget, setSleepTarget] = useState(user.targetSleep || 8.0);
+  const [screenLimit, setScreenLimit] = useState(user.targetScreenTime || 4.0);
+  const [selectedLanguage, setSelectedLanguage] = useState<InterfaceLanguage>(
+    (user.onboardingPreferences?.preferredLanguage as InterfaceLanguage) || 'english'
+  );
+  const [largerText, setLargerText] = useState(user.onboardingPreferences?.accessibility?.largerText || false);
+  const [reducedMotion, setReducedMotion] = useState(user.onboardingPreferences?.accessibility?.reducedMotion || false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [chatClearedSuccess, setChatClearedSuccess] = useState(false);
   const [importFeedback, setImportFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSavePreferences = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateUserTargets(sleepTarget, screenLimit);
-    setGeminiApiKey(apiKeyInput);
+    await updateUserSettings({
+      targetSleep: sleepTarget,
+      targetScreenTime: screenLimit,
+      interfaceLanguage: selectedLanguage,
+      speechRate: speechRate,
+      soundEnabled: soundEnabled,
+      celebrationsEnabled: celebrationsEnabled,
+      accessibility: {
+        largerText,
+        reducedMotion,
+        soundEnabled
+      }
+    });
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
+  };
+
+  const handleClearHistory = () => {
+    if (window.confirm('Clear conversation history with your AI Life Coach? This will reset the chat to the initial greeting.')) {
+      clearCoachChat();
+      setChatClearedSuccess(true);
+      setTimeout(() => setChatClearedSuccess(false), 3000);
+    }
   };
 
   const handleExport = () => {
@@ -114,29 +158,245 @@ export const SettingsView: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: '820px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Target Benchmarks & Profile */}
-      <div className="glass-card" style={{ padding: '36px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
-          <Settings size={22} color="var(--primary-light)" />
-          <h3 style={{ fontSize: '1.45rem', fontWeight: 800 }}>Platform Configuration & Targets</h3>
+    <div style={{ maxWidth: '860px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* 1. Account Profile Card */}
+      <div className="clean-card" style={{ padding: '24px 28px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <User size={20} color="var(--primary)" />
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>Account & Identity</h3>
+          </div>
+
+          {isDemoMode ? (
+            <button
+              onClick={exitDemoMode}
+              className="btn btn-secondary btn-sm"
+              style={{ color: 'var(--accent-amber)', borderColor: 'rgba(198, 128, 25, 0.4)' }}
+            >
+              <Compass size={14} />
+              <span>Exit Demo Mode</span>
+            </button>
+          ) : (
+            <button
+              onClick={logout}
+              className="btn btn-secondary btn-sm"
+              style={{ color: '#dc2626' }}
+            >
+              <LogOut size={14} />
+              <span>Sign Out</span>
+            </button>
+          )}
         </div>
 
-        <form onSubmit={handleSave}>
-          <div style={{ marginBottom: '28px' }}>
-            <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '14px', color: '#ffffff' }}>
-              Target Benchmarks (Discipline OS)
-            </h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+          <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card-inner)', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Active User</div>
+            <div style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '2px' }}>{user.username || 'Personal Guest'}</div>
+          </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-              {/* Sleep Target */}
-              <div className="glass-card-inner">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600 }}>
-                    <Moon size={16} color="#818cf8" />
-                    <span>Target Sleep</span>
+          <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card-inner)', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Account Email</div>
+            <div style={{ fontSize: '0.92rem', fontWeight: 500, color: 'var(--text-secondary)', marginTop: '2px' }}>
+              {user.email || 'local-guest@smritara.internal'}
+            </div>
+          </div>
+
+          <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card-inner)', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Data Environment</div>
+            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: isDemoMode ? 'var(--accent-amber)' : 'var(--primary)', marginTop: '2px' }}>
+              {isDemoMode ? 'Demo Sandbox' : 'Local Storage (Protected)'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Platform Preferences & Benchmarks Form */}
+      <div className="clean-card" style={{ padding: '24px 28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+          <Settings size={20} color="var(--primary)" />
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>Preferences & Benchmarks</h3>
+        </div>
+
+        <form onSubmit={handleSavePreferences}>
+          {/* Interface Language */}
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <Globe size={16} color="var(--primary)" />
+              <label style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                Interface Language
+              </label>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+              Primary language for navigation, practice descriptions, and daily tips. Sanskrit mantras remain available in the Cultural Library.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+              {[
+                { id: 'english', label: 'English', desc: 'Standard UI labels & guides' },
+                { id: 'telugu', label: 'తెలుగు (Telugu)', desc: 'Telugu navigation & context' },
+                { id: 'hindi', label: 'हिन्दी (Hindi)', desc: 'Hindi navigation & context' },
+              ].map(opt => {
+                const isSelected = selectedLanguage === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setSelectedLanguage(opt.id as InterfaceLanguage)}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      padding: '12px 14px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border-subtle)'}`,
+                      background: isSelected ? 'var(--primary-subtle)' : '#FFFFFF',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                      <strong style={{ fontSize: '0.9rem', color: isSelected ? 'var(--primary)' : 'var(--text-main)' }}>
+                        {opt.label}
+                      </strong>
+                      {isSelected && <Check size={14} color="var(--primary)" />}
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      {opt.desc}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Audio & Interaction Sound Preferences */}
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <Volume2 size={16} color="var(--primary)" />
+              <label style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                Audio & Interaction Feedback
+              </label>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+              Independent controls for interaction chimes, soothing ambient drone, and voice recitation pacing.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+              {/* Interaction Sounds Toggle */}
+              <div style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card-inner)', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                    Subtle Audio Feedback
                   </div>
-                  <span className="font-mono" style={{ color: 'var(--primary-light)', fontWeight: 700 }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Gentle start chimes and singing bowls
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  className={`btn btn-sm ${soundEnabled ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem' }}
+                >
+                  {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                  <span>{soundEnabled ? 'On' : 'Muted'}</span>
+                </button>
+              </div>
+
+              {/* Ambient Audio Toggle */}
+              <div style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card-inner)', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                    432Hz Ambient Drone
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Calming background acoustic resonance
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleAmbient}
+                  className={`btn btn-sm ${ambientEnabled ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem' }}
+                >
+                  {ambientEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                  <span>{ambientEnabled ? 'Active' : 'Off'}</span>
+                </button>
+              </div>
+
+              {/* Speech Recitation Speed */}
+              <div style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card-inner)', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                    Recitation Speed
+                  </span>
+                  <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.82rem' }}>
+                    {speechRate}×
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                  {[
+                    { rate: 0.85, label: '0.85×' },
+                    { rate: 1.0, label: '1.0×' },
+                    { rate: 1.2, label: '1.2×' }
+                  ].map(r => (
+                    <button
+                      key={r.rate}
+                      type="button"
+                      onClick={() => setSpeechRate(r.rate)}
+                      className={`btn btn-sm ${speechRate === r.rate ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ flex: 1, fontSize: '0.72rem', padding: '4px 6px' }}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.4 }}>
+                  Engine Note: Web Speech synthesis speed is governed by your local browser speech synthesizer. Chromium and WebKit apply exact rate multipliers; unsupported voice engines default gracefully to 1.0×.
+                </div>
+              </div>
+
+              {/* Celebratory Effects Toggle */}
+              <div style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card-inner)', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                    Celebratory Effects
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Gentle confetti on practice completion
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCelebrationsEnabled(!celebrationsEnabled)}
+                  className={`btn btn-sm ${celebrationsEnabled ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem' }}
+                >
+                  <Sparkles size={13} />
+                  <span>{celebrationsEnabled ? 'Enabled' : 'Disabled'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Self-Reported Benchmarks */}
+          <div style={{ marginBottom: '24px' }}>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-main)' }}>
+              Self-Reported Routine Targets
+            </h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+              Personal benchmark targets for your daily routine. SMRITARA does not connect to invasive device screen-time APIs or medical sensors.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+              <div style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card-inner)', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', fontWeight: 600 }}>
+                    <Moon size={15} color="var(--primary)" />
+                    <span>Target Sleep (Self-Reported)</span>
+                  </div>
+                  <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.85rem' }}>
                     {sleepTarget}h
                   </span>
                 </div>
@@ -151,14 +411,13 @@ export const SettingsView: React.FC = () => {
                 />
               </div>
 
-              {/* Screen Time Limit */}
-              <div className="glass-card-inner">
+              <div style={{ padding: '14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card-inner)', border: '1px solid var(--border-subtle)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600 }}>
-                    <Smartphone size={16} color="#f43f5e" />
-                    <span>Screen Time Limit</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', fontWeight: 600 }}>
+                    <Smartphone size={15} color="var(--accent-amber)" />
+                    <span>Target Screen Limit (Self-Reported)</span>
                   </div>
-                  <span className="font-mono" style={{ color: '#fb7185', fontWeight: 700 }}>
+                  <span style={{ color: 'var(--accent-amber)', fontWeight: 700, fontSize: '0.85rem' }}>
                     {screenLimit}h
                   </span>
                 </div>
@@ -169,56 +428,102 @@ export const SettingsView: React.FC = () => {
                   step="0.5"
                   value={screenLimit}
                   onChange={e => setScreenLimit(parseFloat(e.target.value))}
-                  style={{ width: '100%', accentColor: '#f43f5e' }}
+                  style={{ width: '100%', accentColor: 'var(--accent-amber)' }}
                 />
               </div>
             </div>
           </div>
 
-          {/* Gemini AI Key Section */}
-          <div style={{ marginBottom: '28px' }} className="glass-card-inner">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <Key size={16} color="var(--primary-light)" />
-              <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>
-                Google Gemini Integration & BYOK
-              </h4>
+          {/* Accessibility Settings */}
+          <div style={{ marginBottom: '24px' }}>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '10px', color: 'var(--text-main)' }}>
+              Accessibility & Motion
+            </h4>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+              <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card-inner)', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-main)' }}>High-Legibility Text</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Scale typography for readability</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLargerText(!largerText)}
+                  className={`btn btn-sm ${largerText ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: '0.74rem' }}
+                >
+                  {largerText ? 'Active' : 'Standard'}
+                </button>
+              </div>
+
+              <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card-inner)', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-main)' }}>Reduced Motion</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Mute breathwork pulsing transitions</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReducedMotion(!reducedMotion)}
+                  className={`btn btn-sm ${reducedMotion ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: '0.74rem' }}
+                >
+                  {reducedMotion ? 'Active' : 'Standard'}
+                </button>
+              </div>
             </div>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.5 }}>
-              SMRITARA operates securely via server proxy or client BYOK (Bring Your Own Key). For local testing, you can input a personal Gemini API key. In deployed environments, credentials remain securely on the server proxy. If unconfigured, SMRITARA runs seamlessly using its offline grounded analytical engine.
-            </p>
-            <input
-              type="password"
-              className="input-field"
-              placeholder="AIzaSy... (stored only in local browser memory)"
-              value={apiKeyInput}
-              onChange={e => setApiKeyInput(e.target.value)}
-            />
           </div>
 
+          {/* Save Button */}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" className="btn btn-primary">
+            <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px', fontSize: '0.88rem' }}>
               {savedSuccess ? (
                 <>
                   <Check size={16} />
-                  <span>Targets Saved!</span>
+                  <span>Preferences Saved</span>
                 </>
               ) : (
-                <span>Save Configuration</span>
+                <span>Save Preferences</span>
               )}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Data Portability: Export & Import */}
-      <div className="glass-card" style={{ padding: '36px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <Download size={22} color="#14b8a6" />
-          <h3 style={{ fontSize: '1.35rem', fontWeight: 800 }}>Data Portability & Backup</h3>
+      {/* 3. AI Coach History Reset */}
+      <div className="clean-card" style={{ padding: '24px 28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+          <MessageSquare size={18} color="var(--primary)" />
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>AI Coach Memory</h3>
         </div>
 
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px', lineHeight: 1.5 }}>
-          Export your complete SMRITARA dataset (habits, daily logs, focus sprints, chronotype assessment, and memory records) as a validated JSON archive. You can restore your data at any time or transfer it across browsers.
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginBottom: '16px', lineHeight: 1.5 }}>
+          Your AI Life Coach synthesizes guidance using your verified local practice records. The API key is securely managed on your local server. You can reset conversation history at any time without deleting your practice records.
+        </p>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            Reset conversation memory to start fresh
+          </span>
+          <button
+            onClick={handleClearHistory}
+            className="btn btn-secondary btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <RotateCcw size={14} />
+            <span>{chatClearedSuccess ? 'History Cleared' : 'Clear Chat History'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 4. Data Portability: Export & Import */}
+      <div className="clean-card" style={{ padding: '24px 28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+          <Download size={18} color="var(--primary)" />
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>Data Portability & Backup</h3>
+        </div>
+
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginBottom: '16px', lineHeight: 1.5 }}>
+          Export your complete SMRITARA records (habits, daily logs, practice sessions, milestones, and points) as an encrypted or plain JSON archive. Restore anytime to retain your verified history.
         </p>
 
         {importFeedback && (
@@ -226,27 +531,27 @@ export const SettingsView: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            padding: '12px 16px',
-            borderRadius: 'var(--radius-md)',
-            marginBottom: '20px',
-            background: importFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)',
-            border: `1px solid ${importFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(244, 63, 94, 0.3)'}`,
-            color: importFeedback.type === 'success' ? '#34d399' : '#fb7185',
-            fontSize: '0.88rem'
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-sm)',
+            marginBottom: '16px',
+            background: importFeedback.type === 'success' ? 'var(--primary-subtle)' : 'var(--accent-amber-subtle)',
+            border: `1px solid ${importFeedback.type === 'success' ? 'var(--primary-light)' : 'rgba(198, 128, 25, 0.4)'}`,
+            color: importFeedback.type === 'success' ? 'var(--primary)' : 'var(--accent-amber)',
+            fontSize: '0.82rem'
           }}>
-            {importFeedback.type === 'success' ? <Check size={18} /> : <AlertTriangle size={18} />}
+            {importFeedback.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
             <span>{importFeedback.message}</span>
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-          <button onClick={handleExport} className="btn btn-teal">
-            <Download size={16} />
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <button onClick={handleExport} className="btn btn-primary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Download size={15} />
             <span>Export Data (JSON)</span>
           </button>
 
-          <button onClick={() => fileInputRef.current?.click()} className="btn btn-secondary">
-            <Upload size={16} />
+          <button onClick={() => fileInputRef.current?.click()} className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Upload size={15} />
             <span>Import from Backup</span>
           </button>
 
@@ -260,40 +565,40 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Privacy & Reset Card */}
-      <div className="glass-card" style={{ padding: '28px' }}>
+      {/* 5. Privacy & Clean Slate */}
+      <div className="clean-card" style={{ padding: '24px 28px' }}>
         <div style={{
           display: 'flex',
           alignItems: 'flex-start',
           gap: '12px',
-          background: 'rgba(20, 184, 166, 0.08)',
-          border: '1px solid rgba(20, 184, 166, 0.25)',
-          borderRadius: 'var(--radius-md)',
-          padding: '14px 18px',
-          marginBottom: '20px'
+          background: 'var(--primary-subtle)',
+          border: '1px solid var(--primary-light)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '12px 16px',
+          marginBottom: '16px'
         }}>
-          <Shield size={18} color="#2dd4bf" style={{ marginTop: '2px' }} />
-          <div style={{ fontSize: '0.82rem', color: '#ccfbf1', lineHeight: 1.5 }}>
-            <strong>Privacy Guarantee:</strong> All personal metrics, assessment answers, and habit checklists are persisted in your local browser storage. No invasive wearable, microphone, or camera permissions are required or accessed.
+          <Shield size={18} color="var(--primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-main)', lineHeight: 1.5 }}>
+            <strong>Privacy & Architecture Disclosure: </strong> All personal metrics, assessment answers, and session records are stored locally in your browser storage. SMRITARA does not track background phone sensors or read device telemetry.
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Need to start fresh for a new demonstration?
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            Need to reset local demo sandbox records?
           </span>
           <button
             type="button"
             onClick={() => {
-              if (window.confirm('Erase all stored logs, habits, and sessions?')) {
+              if (window.confirm('Reset local practice records and clear demo data?')) {
                 resetAllData();
               }
             }}
             className="btn btn-secondary btn-sm"
-            style={{ color: '#fb7185' }}
+            style={{ color: '#dc2626' }}
           >
             <RotateCcw size={14} />
-            <span>Reset All Records</span>
+            <span>Reset Demo Data</span>
           </button>
         </div>
       </div>

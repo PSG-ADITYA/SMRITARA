@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Moon, Smartphone, Smile, Zap, TrendingUp, Sparkles, Check, AlertCircle } from 'lucide-react';
+import { X, Moon, Smartphone, Smile, Zap, TrendingUp, Sparkles, Check, Clock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
 import { calculateDailyDisciplineScore } from '../../engine/scoring';
@@ -18,31 +18,45 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
   };
 
   const todayStr = getTodayStr();
-  const existingLog = dailyLogs.find(l => l.date === todayStr);
 
   const [dateStr, setDateStr] = useState(todayStr);
-  const [sleepHours, setSleepHours] = useState(existingLog ? existingLog.sleepHours : user.targetSleep);
-  const [screenTimeHours, setScreenTimeHours] = useState(existingLog ? existingLog.screenTimeHours : user.targetScreenTime);
-  const [moodScore, setMoodScore] = useState(existingLog ? existingLog.moodScore : 8);
-  const [energyScore, setEnergyScore] = useState(existingLog ? existingLog.energyScore : 7);
-  const [productivityScore, setProductivityScore] = useState(existingLog ? existingLog.productivityScore : 8);
-  const [notes, setNotes] = useState(existingLog ? existingLog.notes : '');
-  const [selectedHabitIds, setSelectedHabitIds] = useState<string[]>(
-    existingLog ? existingLog.completedHabitIds : []
-  );
+  const [sleepHours, setSleepHours] = useState(user.targetSleep || 7.5);
+  const [screenTimeHours, setScreenTimeHours] = useState(user.targetScreenTime || 3.5);
+  const [moodScore, setMoodScore] = useState(7);
+  const [energyScore, setEnergyScore] = useState(7);
+  const [productivityScore, setProductivityScore] = useState(7);
+  const [notes, setNotes] = useState('');
+  const [selectedHabitIds, setSelectedHabitIds] = useState<string[]>([]);
 
+  // Synchronize state when modal opens or date selection changes
   useEffect(() => {
-    const log = dailyLogs.find(l => l.date === dateStr);
-    if (log) {
-      setSleepHours(log.sleepHours);
-      setScreenTimeHours(log.screenTimeHours);
-      setMoodScore(log.moodScore);
-      setEnergyScore(log.energyScore);
-      setProductivityScore(log.productivityScore);
-      setNotes(log.notes);
-      setSelectedHabitIds(log.completedHabitIds);
+    if (isOpen) {
+      const log = dailyLogs.find(l => l.date === dateStr);
+      if (log) {
+        setSleepHours(log.sleepHours);
+        setScreenTimeHours(log.screenTimeHours);
+        setMoodScore(log.moodScore);
+        setEnergyScore(log.energyScore);
+        setProductivityScore(log.productivityScore);
+        setNotes(log.notes || '');
+        setSelectedHabitIds(log.completedHabitIds || []);
+      } else {
+        setSleepHours(user.targetSleep || 7.5);
+        setScreenTimeHours(user.targetScreenTime || 3.5);
+        setMoodScore(7);
+        setEnergyScore(7);
+        setProductivityScore(7);
+        setNotes('');
+        setSelectedHabitIds([]);
+      }
     }
-  }, [dateStr, dailyLogs]);
+  }, [isOpen, dateStr, dailyLogs]);
+
+  // Comparison with previous recorded day
+  const pastRecordedLogs = dailyLogs
+    .filter(l => l.date < dateStr && l.sleepHours > 0)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const previousRecordedDay = pastRecordedLogs[0];
 
   if (!isOpen) return null;
 
@@ -71,14 +85,15 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
       moodScore,
       energyScore,
       productivityScore,
-      notes
+      notes,
+      completedHabitIds: selectedHabitIds,
+      reportedAt: new Date().toISOString(),
+      appliedDate: dateStr
     });
 
-    // Update habits for this date
+    // Also synchronize individual habit toggles
     selectedHabitIds.forEach(hId => {
-      if (!existingLog?.completedHabitIds.includes(hId)) {
-        toggleHabitForDate(hId, dateStr);
-      }
+      toggleHabitForDate(hId, dateStr);
     });
 
     if (previewScore.total >= 80) {
@@ -95,6 +110,9 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
   const goodHabits = habits.filter(h => h.type === 'good');
   const badHabits = habits.filter(h => h.type === 'bad');
 
+  const sleepPresets = [5.0, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 10.0];
+  const screenPresets = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+
   return (
     <div style={{
       position: 'fixed',
@@ -102,7 +120,7 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      backgroundColor: 'rgba(0, 0, 0, 0.65)',
       backdropFilter: 'blur(8px)',
       display: 'flex',
       alignItems: 'center',
@@ -111,12 +129,17 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
       padding: '20px'
     }}>
       <div className="glass-card" style={{
-        maxWidth: '720px',
+        maxWidth: '740px',
         width: '100%',
         maxHeight: '90vh',
         overflowY: 'auto',
         position: 'relative',
-        padding: '32px'
+        padding: '32px',
+        background: '#FFFFFF',
+        color: 'var(--text-main)',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
       }}>
         {/* Close Button */}
         <button
@@ -128,20 +151,47 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
             background: 'transparent',
             border: 'none',
             color: 'var(--text-secondary)',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            padding: '4px'
           }}
+          title="Close Check-In"
         >
           <X size={22} />
         </button>
 
-        <div style={{ marginBottom: '24px' }}>
+        <div style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Sparkles size={20} color="var(--primary-light)" />
-            <h3 style={{ fontSize: '1.45rem', fontWeight: 800 }}>Daily Activity & State Check-In</h3>
+            <Sparkles size={20} color="var(--primary)" />
+            <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-main)' }}>
+              Daily Activity & Sleep Check-In
+            </h3>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginTop: '4px' }}>
-            Record sleep, screen time, and subjective energy to fuel your personal growth feedback loop.
+            Record today's sleep duration, screen time, and micro-habits. Storing this updates your streak, calibration score, and awards verified progress points.
           </p>
+
+          {/* Date Picker Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
+            <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Check-in applies to date:</span>
+            <input
+              type="date"
+              value={dateStr}
+              onChange={e => setDateStr(e.target.value)}
+              className="input-field"
+              style={{
+                padding: '6px 12px',
+                fontSize: '0.88rem',
+                width: 'auto',
+                background: '#F9F8F5',
+                color: 'var(--text-main)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-sm)'
+              }}
+            />
+            {dateStr === todayStr && (
+              <span className="badge badge-emerald" style={{ fontSize: '0.74rem' }}>Today's Check-In</span>
+            )}
+          </div>
         </div>
 
         {/* Live Score Banner */}
@@ -149,25 +199,25 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(20, 184, 166, 0.15) 100%)',
-          border: '1px solid rgba(167, 139, 250, 0.3)',
+          background: 'var(--primary-subtle)',
+          border: '1px solid rgba(40, 84, 67, 0.25)',
           borderRadius: 'var(--radius-md)',
-          padding: '14px 20px',
+          padding: '16px 20px',
           marginBottom: '24px'
         }}>
           <div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>
-              Calculated Discipline Score
+            <div style={{ fontSize: '0.78rem', color: 'var(--primary)', textTransform: 'uppercase', fontWeight: 700 }}>
+              Calculated Discipline Score for {dateStr === todayStr ? 'Today' : dateStr}
             </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#ffffff' }}>
-              {previewScore.total} <span style={{ fontSize: '0.9rem', color: 'var(--primary-light)' }}>/ 100</span>
+            <div style={{ fontSize: '1.85rem', fontWeight: 900, color: 'var(--primary)' }}>
+              {previewScore.total} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>/ 100</span>
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <span className={`badge ${previewScore.total >= 75 ? 'badge-emerald' : previewScore.total >= 50 ? 'badge-amber' : 'badge-rose'}`}>
               {previewScore.tier}
             </span>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
               Sleep: {previewScore.sleepScore}/20 • Screen: {previewScore.screenScore}/20 • Habits: {previewScore.goodHabitsScore + previewScore.badHabitsScore}/60
             </div>
           </div>
@@ -175,18 +225,65 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
 
         <form onSubmit={handleSubmit}>
           {/* Sliders Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-            {/* Sleep Slider */}
-            <div className="glass-card-inner">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+            {/* Sleep Slider & Quick Chips */}
+            <div className="clean-card" style={{ padding: '18px', background: '#FFFFFF', border: '1px solid var(--border-subtle)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600 }}>
-                  <Moon size={16} color="#818cf8" />
-                  <span>Sleep Hours</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  <Moon size={16} color="var(--primary)" />
+                  <span>Sleep Recorded for Today (Last Night)</span>
                 </div>
-                <span className="font-mono" style={{ color: 'var(--primary-light)', fontWeight: 700 }}>
-                  {sleepHours}h (Target: {user.targetSleep}h)
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input
+                    type="number"
+                    step="0.25"
+                    min="1.0"
+                    max="14.0"
+                    value={sleepHours}
+                    onChange={e => setSleepHours(Math.max(1, parseFloat(e.target.value) || 0))}
+                    style={{
+                      width: '60px',
+                      padding: '3px 6px',
+                      fontSize: '0.9rem',
+                      fontWeight: 700,
+                      textAlign: 'center',
+                      borderRadius: '4px',
+                      border: '1px solid var(--border-subtle)',
+                      color: 'var(--primary)',
+                      background: '#F9F8F5'
+                    }}
+                  />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>hrs</span>
+                </div>
               </div>
+
+              {/* Quick Select Preset Chips */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', margin: '10px 0' }}>
+                {sleepPresets.map(preset => {
+                  const isActive = sleepHours === preset;
+                  return (
+                    <button
+                      type="button"
+                      key={preset}
+                      onClick={() => setSleepHours(preset)}
+                      style={{
+                        padding: '3px 8px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        background: isActive ? 'var(--primary)' : '#F4F2EC',
+                        color: isActive ? '#FFFFFF' : 'var(--text-secondary)',
+                        border: `1px solid ${isActive ? 'var(--primary)' : 'var(--border-subtle)'}`,
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {preset}h
+                    </button>
+                  );
+                })}
+              </div>
+
               <input
                 type="range"
                 min="3.0"
@@ -194,40 +291,124 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
                 step="0.5"
                 value={sleepHours}
                 onChange={e => setSleepHours(parseFloat(e.target.value))}
-                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                style={{ width: '100%', accentColor: 'var(--primary)', marginTop: '4px' }}
               />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                <span>Reported: {sleepHours}h</span>
+                <span>Self-Reported Target: {user.targetSleep}h</span>
+              </div>
+
+              {/* Factual Previous Day Comparison */}
+              <div style={{
+                fontSize: '0.76rem',
+                color: 'var(--text-secondary)',
+                marginTop: '10px',
+                padding: '8px 12px',
+                background: '#F8F5EE',
+                borderRadius: '6px',
+                border: '1px solid var(--border-subtle)'
+              }}>
+                {previousRecordedDay ? (
+                  <span>
+                    Compared with previous record ({previousRecordedDay.date}):{' '}
+                    <strong style={{ color: sleepHours >= previousRecordedDay.sleepHours ? '#047857' : '#B45309' }}>
+                      {sleepHours >= previousRecordedDay.sleepHours ? '+' : ''}
+                      {(sleepHours - previousRecordedDay.sleepHours).toFixed(1)}h
+                    </strong>{' '}
+                    ({previousRecordedDay.sleepHours}h recorded previously).
+                  </span>
+                ) : (
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    No prior record. Establishing your personal sleep baseline.
+                  </span>
+                )}
+              </div>
             </div>
 
-            {/* Screen Time Slider */}
-            <div className="glass-card-inner">
+            {/* Screen Time Slider & Quick Chips */}
+            <div className="clean-card" style={{ padding: '18px', background: '#FFFFFF', border: '1px solid var(--border-subtle)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600 }}>
-                  <Smartphone size={16} color="#f43f5e" />
-                  <span>Screen Time (Phone + Non-Work)</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  <Smartphone size={16} color="var(--accent-amber)" />
+                  <span>Non-Work Screen Time</span>
                 </div>
-                <span className="font-mono" style={{ color: screenTimeHours <= user.targetScreenTime ? '#34d399' : '#fb7185', fontWeight: 700 }}>
-                  {screenTimeHours}h (Limit: {user.targetScreenTime}h)
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    max="14.0"
+                    value={screenTimeHours}
+                    onChange={e => setScreenTimeHours(Math.max(0, parseFloat(e.target.value) || 0))}
+                    style={{
+                      width: '60px',
+                      padding: '3px 6px',
+                      fontSize: '0.9rem',
+                      fontWeight: 700,
+                      textAlign: 'center',
+                      borderRadius: '4px',
+                      border: '1px solid var(--border-subtle)',
+                      color: screenTimeHours <= user.targetScreenTime ? 'var(--primary)' : '#DC2626',
+                      background: '#F9F8F5'
+                    }}
+                  />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>hrs</span>
+                </div>
               </div>
+
+              {/* Quick Select Preset Chips */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', margin: '10px 0' }}>
+                {screenPresets.map(preset => {
+                  const isActive = screenTimeHours === preset;
+                  return (
+                    <button
+                      type="button"
+                      key={preset}
+                      onClick={() => setScreenTimeHours(preset)}
+                      style={{
+                        padding: '3px 8px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        background: isActive ? 'var(--accent-amber)' : '#F4F2EC',
+                        color: isActive ? '#FFFFFF' : 'var(--text-secondary)',
+                        border: `1px solid ${isActive ? 'var(--accent-amber)' : 'var(--border-subtle)'}`,
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {preset}h
+                    </button>
+                  );
+                })}
+              </div>
+
               <input
                 type="range"
                 min="0.5"
-                max="12.0"
+                max="10.0"
                 step="0.5"
                 value={screenTimeHours}
                 onChange={e => setScreenTimeHours(parseFloat(e.target.value))}
-                style={{ width: '100%', accentColor: screenTimeHours <= user.targetScreenTime ? '#10b981' : '#f43f5e' }}
+                style={{ width: '100%', accentColor: screenTimeHours <= user.targetScreenTime ? 'var(--primary)' : '#DC2626', marginTop: '4px' }}
               />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                <span>Reported: {screenTimeHours}h</span>
+                <span>Self-Imposed Target Limit: {user.targetScreenTime}h</span>
+              </div>
             </div>
           </div>
 
           {/* Energy & Mood Ratings */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px', marginBottom: '24px' }}>
             {/* Mood */}
-            <div className="glass-card-inner">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                <Smile size={14} color="#f59e0b" />
-                <span>Daily Mood: <strong style={{ color: '#fff' }}>{moodScore}/10</strong></span>
+            <div className="clean-card" style={{ padding: '14px', background: '#FFFFFF', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Smile size={14} color="var(--accent-amber)" />
+                  <span>Daily Mood</span>
+                </div>
+                <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{moodScore}/10</strong>
               </div>
               <input
                 type="range"
@@ -235,15 +416,18 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
                 max="10"
                 value={moodScore}
                 onChange={e => setMoodScore(parseInt(e.target.value))}
-                style={{ width: '100%', accentColor: '#f59e0b' }}
+                style={{ width: '100%', accentColor: 'var(--accent-amber)' }}
               />
             </div>
 
             {/* Energy */}
-            <div className="glass-card-inner">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                <Zap size={14} color="#10b981" />
-                <span>Subjective Energy: <strong style={{ color: '#fff' }}>{energyScore}/10</strong></span>
+            <div className="clean-card" style={{ padding: '14px', background: '#FFFFFF', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Zap size={14} color="var(--primary)" />
+                  <span>Subjective Energy</span>
+                </div>
+                <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{energyScore}/10</strong>
               </div>
               <input
                 type="range"
@@ -251,15 +435,18 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
                 max="10"
                 value={energyScore}
                 onChange={e => setEnergyScore(parseInt(e.target.value))}
-                style={{ width: '100%', accentColor: '#10b981' }}
+                style={{ width: '100%', accentColor: 'var(--primary)' }}
               />
             </div>
 
             {/* Productivity */}
-            <div className="glass-card-inner">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                <TrendingUp size={14} color="var(--primary-light)" />
-                <span>Productivity: <strong style={{ color: '#fff' }}>{productivityScore}/10</strong></span>
+            <div className="clean-card" style={{ padding: '14px', background: '#FFFFFF', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <TrendingUp size={14} color="var(--accent-teal)" />
+                  <span>Focus & Productivity</span>
+                </div>
+                <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{productivityScore}/10</strong>
               </div>
               <input
                 type="range"
@@ -267,14 +454,14 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
                 max="10"
                 value={productivityScore}
                 onChange={e => setProductivityScore(parseInt(e.target.value))}
-                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                style={{ width: '100%', accentColor: 'var(--accent-teal)' }}
               />
             </div>
           </div>
 
           {/* Habit Toggles */}
           <div style={{ marginBottom: '24px' }}>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '12px' }}>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-main)' }}>
               Habit Checklist for Today
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
@@ -290,8 +477,8 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
                       gap: '10px',
                       padding: '10px 14px',
                       borderRadius: 'var(--radius-md)',
-                      background: isChecked ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg-card-inner)',
-                      border: `1px solid ${isChecked ? 'rgba(16, 185, 129, 0.4)' : 'var(--border-subtle)'}`,
+                      background: isChecked ? 'rgba(40, 84, 67, 0.08)' : '#F9F8F5',
+                      border: `1px solid ${isChecked ? 'var(--primary)' : 'var(--border-subtle)'}`,
                       cursor: 'pointer',
                       transition: 'all 0.15s ease'
                     }}
@@ -300,15 +487,15 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
                       width: '18px',
                       height: '18px',
                       borderRadius: '4px',
-                      border: `2px solid ${isChecked ? '#10b981' : 'var(--text-muted)'}`,
-                      background: isChecked ? '#10b981' : 'transparent',
+                      border: `2px solid ${isChecked ? 'var(--primary)' : 'var(--border-subtle)'}`,
+                      background: isChecked ? 'var(--primary)' : 'transparent',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}>
                       {isChecked && <Check size={12} color="#ffffff" />}
                     </div>
-                    <span style={{ fontSize: '0.85rem', color: isChecked ? '#ffffff' : 'var(--text-secondary)' }}>
+                    <span style={{ fontSize: '0.85rem', color: isChecked ? 'var(--primary)' : 'var(--text-secondary)', fontWeight: isChecked ? 600 : 400 }}>
                       {h.name}
                     </span>
                   </div>
@@ -327,8 +514,8 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
                       gap: '10px',
                       padding: '10px 14px',
                       borderRadius: 'var(--radius-md)',
-                      background: isTriggered ? 'rgba(244, 63, 94, 0.15)' : 'var(--bg-card-inner)',
-                      border: `1px solid ${isTriggered ? 'rgba(244, 63, 94, 0.4)' : 'var(--border-subtle)'}`,
+                      background: isTriggered ? 'rgba(220, 38, 38, 0.08)' : '#F9F8F5',
+                      border: `1px solid ${isTriggered ? 'rgba(220, 38, 38, 0.4)' : 'var(--border-subtle)'}`,
                       cursor: 'pointer',
                       transition: 'all 0.15s ease'
                     }}
@@ -337,8 +524,8 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
                       width: '18px',
                       height: '18px',
                       borderRadius: '4px',
-                      border: `2px solid ${isTriggered ? '#f43f5e' : 'var(--text-muted)'}`,
-                      background: isTriggered ? '#f43f5e' : 'transparent',
+                      border: `2px solid ${isTriggered ? '#DC2626' : 'var(--border-subtle)'}`,
+                      background: isTriggered ? '#DC2626' : 'transparent',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
@@ -346,7 +533,7 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
                       {isTriggered && <X size={12} color="#ffffff" />}
                     </div>
                     <div>
-                      <span style={{ fontSize: '0.85rem', color: isTriggered ? '#f43f5e' : 'var(--text-secondary)' }}>
+                      <span style={{ fontSize: '0.85rem', color: isTriggered ? '#DC2626' : 'var(--text-secondary)', fontWeight: isTriggered ? 600 : 400 }}>
                         {h.name}
                       </span>
                       <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
@@ -367,19 +554,29 @@ export const DailyLogModal: React.FC<DailyLogModalProps> = ({ isOpen, onClose })
             <input
               type="text"
               className="input-field"
-              placeholder="e.g. Slept well, completed 2 focus blocks, felt sharp after midday walk..."
+              placeholder="e.g. Slept 7.5h restorative sleep, did morning breathing, feeling alert..."
               value={notes}
               onChange={e => setNotes(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-md)',
+                background: '#F9F8F5',
+                border: '1px solid var(--border-subtle)',
+                color: 'var(--text-main)',
+                fontSize: '0.88rem'
+              }}
             />
           </div>
 
-          {/* Buttons */}
+          {/* Action Buttons */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <button type="button" onClick={onClose} className="btn btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              Save Daily Activity
+            <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Check size={16} />
+              <span>Record Check-In & Save Progress</span>
             </button>
           </div>
         </form>

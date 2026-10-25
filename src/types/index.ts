@@ -5,7 +5,7 @@ export interface DailyScheduleBlock {
   title: string;
   startTime: string; // "07:00"
   endTime: string;   // "08:30"
-  category: 'deep_work' | 'light_work' | 'exercise' | 'wind_down' | 'sleep' | 'personal';
+  category: 'deep_work' | 'light_work' | 'exercise' | 'wind_down' | 'sleep' | 'personal' | 'smriti_veda';
   notes: string;
   isCompleted?: boolean;
 }
@@ -45,6 +45,8 @@ export interface DailyLog {
   disciplineScore: number;   // 0 - 100
   completedHabitIds: string[];
   avoidedBadHabitIds: string[];
+  reportedAt?: string;       // ISO timestamp when check-in was logged
+  appliedDate?: string;      // Date to which this report applies
 }
 
 export interface FocusSession {
@@ -55,7 +57,7 @@ export interface FocusSession {
   timestamp: string;
 }
 
-export type MemoryGameType = 'sequence' | 'matrix' | 'passages' | 'pairs';
+export type MemoryGameType = 'sequence' | 'matrix' | 'passages' | 'pairs' | 'object_memory' | 'attention';
 
 export interface MemorySession {
   id: string;
@@ -66,6 +68,7 @@ export interface MemorySession {
   accuracy: number; // 0 - 100
   timeSpentSeconds: number;
   timestamp: string;
+  notes?: string;
 }
 
 export type BreathingTechnique = 'box' | '478' | 'coherence' | 'calm';
@@ -73,7 +76,7 @@ export type BreathingTechnique = 'box' | '478' | 'coherence' | 'calm';
 export interface MindfulnessSession {
   id: string;
   date: string;
-  type: 'breathing' | 'meditation' | 'reflection';
+  type: 'breathing' | 'meditation' | 'reflection' | 'body_scan';
   durationSeconds: number;
   technique?: BreathingTechnique;
   moodBefore?: number;
@@ -86,7 +89,7 @@ export interface ProposedAction {
   id: string;
   title: string;
   description: string;
-  type: 'add_habit' | 'update_schedule' | 'target_adjustment' | 'memory_recommendation' | 'meditation_prompt' | 'mindfulness_recommendation';
+  type: 'add_habit' | 'update_schedule' | 'target_adjustment' | 'memory_recommendation' | 'meditation_prompt' | 'mindfulness_recommendation' | 'chanting_recommendation';
   payload: Record<string, any>;
   status: 'pending' | 'applied' | 'dismissed';
 }
@@ -111,22 +114,108 @@ export interface PatternInsight {
   sampleCount: number;
 }
 
+export type InterfaceLanguage = 'english' | 'telugu' | 'hindi';
+export type ContentLanguage = 'english' | 'telugu' | 'hindi' | 'sanskrit';
+export type SupportedLanguage = ContentLanguage;
+
+export interface OnboardingPreferences {
+  preferredName: string;
+  ageRange?: string;
+  preferredLanguage: InterfaceLanguage;
+  recitationLanguage?: ContentLanguage;
+  primaryGoal?: string;
+  secondaryGoals?: string[];
+  goals: string[];
+  dailyPracticeMinutes: number;
+  recitationSpeed?: number;
+  practiceTime: 'morning' | 'afternoon' | 'evening' | 'flexible';
+  interests: string[];
+  contentStyle: 'visual' | 'audio' | 'text' | 'mixed';
+  experienceLevel: 'beginner' | 'intermediate' | 'advanced';
+  targetSleepHours?: number;
+  targetScreenTimeHours?: number;
+  accessibility: {
+    largerText: boolean;
+    reducedMotion: boolean;
+    soundEnabled: boolean;
+    ambientAudioEnabled?: boolean;
+    celebrationEffectsEnabled?: boolean;
+  };
+}
+
+export interface PersonalizedPlanItem {
+  id: string;
+  title: string;
+  category: 'cognitive' | 'cultural' | 'mindfulness' | 'habit';
+  durationMinutes: number;
+  reason: string;
+  actionTab: string;
+  completed?: boolean;
+}
+
+export interface UserAccount {
+  id: string;
+  email: string;
+  name: string;
+  passwordHash?: string;
+  createdAt: string;
+}
+
 export interface UserProfile {
   id: string;
   username: string;
+  email?: string;
   targetSleep: number;
   targetScreenTime: number;
   onboardingCompleted: boolean;
+  onboardingPreferences?: OnboardingPreferences;
+  personalizedPlan?: PersonalizedPlanItem[];
   disciplineScore: number;
   currentStreak: number;
   chronotypeProfile?: ChronotypeProfile;
   geminiApiKey?: string;
   createdAt: string;
+  isDemo?: boolean;
 }
+
+export interface CulturalItem {
+  id: string;
+  title: string;
+  language: SupportedLanguage;
+  category: 'mantra' | 'shloka' | 'poem' | 'story' | 'proverb' | 'song';
+  originalText: string;
+  transliteration?: string;
+  meaning: string;
+  pronunciation?: string;
+  audioUrl?: string;
+  audioSourceType?: 'recording' | 'tts' | 'text_only';
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  estimatedMinutes?: number;
+  source: string;
+  tags: string[];
+  stages: ('listen' | 'repeat' | 'chunk' | 'recall' | 'missing_word')[];
+  blanks?: { id: number; correct: string; options: string[] }[];
+}
+
+export interface ChantingSession {
+  id: string;
+  date: string;
+  chantId: string;
+  chantTitle: string;
+  language: SupportedLanguage;
+  repetitionsCompleted: number;
+  targetRepetitions: number;
+  mode: 'listen' | 'repeat' | 'recall' | 'silent';
+  durationSeconds: number;
+  timestamp: string;
+}
+
+export type { PracticeSession, SessionComparison, PracticeMilestone } from '../engine/sessionProgressEngine';
+export type { DailyTip } from '../data/dailyTips';
 
 export interface SmritaraBackupPackage {
   appName: 'SMRITARA';
-  schemaVersion: '1.0';
+  schemaVersion: '3.0';
   exportedAt: string;
   payload: {
     user: Partial<UserProfile>;
@@ -135,7 +224,11 @@ export interface SmritaraBackupPackage {
     focusSessions: FocusSession[];
     memorySessions: MemorySession[];
     mindfulnessSessions: MindfulnessSession[];
+    chantingSessions?: ChantingSession[];
+    practiceSessions?: any[];
+    favourites?: string[];
     todaySchedule: DailyScheduleBlock[];
     chatMessages?: ChatMessage[];
   };
 }
+

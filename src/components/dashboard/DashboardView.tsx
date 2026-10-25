@@ -1,348 +1,424 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Sparkles, 
-  Flame, 
-  Clock, 
   Target, 
   Brain, 
   Wind, 
-  Moon, 
-  Smartphone, 
+  BookOpen, 
   CheckCircle2, 
   ArrowRight, 
   PlusCircle,
   Play,
+  Bookmark,
+  X,
+  Clock,
+  Compass,
+  BarChart3,
   Calendar,
-  TrendingUp,
-  Activity
+  Zap,
+  RotateCcw
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { generateDailyRecommendations } from '../../engine/recommendationEngine';
+import { compareWithPreviousSession } from '../../engine/sessionProgressEngine';
 
 export const DashboardView: React.FC<{ onOpenLogModal: () => void }> = ({ onOpenLogModal }) => {
   const { 
     user, 
-    habits, 
-    dailyLogs, 
-    focusSessions, 
-    memorySessions, 
-    mindfulnessSessions, 
-    todaySchedule, 
-    patternInsights,
+    practiceSessions, 
+    todayTip, 
+    dismissTip, 
+    savedTipIds, 
+    toggleSaveTip,
+    practicePoints, 
+    milestones, 
     setActiveTab, 
-    getTodayLog 
+    getTodayLog, 
+    isDemoMode 
   } = useApp();
 
+  const [selectedDuration, setSelectedDuration] = useState<5 | 7 | 10>(7);
+  const [dismissedRecIds, setDismissedRecIds] = useState<string[]>([]);
+
   const todayLog = getTodayLog();
-  const goodHabits = habits.filter(h => h.type === 'good');
-  const badHabits = habits.filter(h => h.type === 'bad');
+  const recommendations = generateDailyRecommendations(
+    practiceSessions,
+    selectedDuration,
+    user.onboardingPreferences?.preferredLanguage || 'english',
+    dismissedRecIds
+  );
 
-  const completedGoodCount = goodHabits.filter(h => todayLog?.completedHabitIds.includes(h.id)).length;
-  const avoidedBadCount = badHabits.filter(h => !todayLog?.completedHabitIds.includes(h.id)).length;
-  const totalFocusMinutes = focusSessions.reduce((acc, s) => acc + s.durationMinutes, 0);
-
-  // Suggested next action priority heuristic
-  let suggestedAction = {
-    title: 'Complete Today\'s Activity Log',
-    subtitle: 'Log sleep, screen time, and habits to calibrate your daily score.',
-    actionText: 'Log Activity',
-    onClick: onOpenLogModal,
-    icon: PlusCircle
+  // Time-of-day greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   };
 
-  if (todayLog && !user.chronotypeProfile) {
-    suggestedAction = {
-      title: 'Discover Your Circadian Chronotype',
-      subtitle: 'Take the 2-minute assessment to unlock your optimal focus windows.',
-      actionText: 'Take Assessment',
-      onClick: () => setActiveTab('bodyclock'),
-      icon: Clock
-    };
-  } else if (todayLog && memorySessions.length === 0) {
-    suggestedAction = {
-      title: 'Engage Working Memory in the Gym',
-      subtitle: 'Play a 2-minute Matrix Grid or Sequence Recall exercise.',
-      actionText: 'Start Memory Exercise',
-      onClick: () => setActiveTab('memory'),
-      icon: Brain
-    };
-  } else if (todayLog && mindfulnessSessions.length === 0) {
-    suggestedAction = {
-      title: 'Mindful Respiratory Reset',
-      subtitle: 'Perform a 3-minute Box Breathing session to lower stress.',
-      actionText: 'Begin Breathwork',
-      onClick: () => setActiveTab('mindfulness'),
-      icon: Wind
-    };
-  } else if (todayLog) {
-    suggestedAction = {
-      title: 'Consult Your AI Life Coach',
-      subtitle: 'Review grounded observations and explore personalized habit proposals.',
-      actionText: 'Open AI Coach',
-      onClick: () => setActiveTab('coach'),
-      icon: Sparkles
-    };
-  }
+  // Find most recent completed session to show comparison
+  const latestSession = practiceSessions[0];
+  const comparison = latestSession 
+    ? compareWithPreviousSession(latestSession, practiceSessions)
+    : null;
 
-  const primaryInsight = patternInsights[0];
+  // Unfinished or today's activities count
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todaySessions = practiceSessions.filter(s => s.completedAt.startsWith(todayStr));
+  const completedToday = todaySessions.length;
+
+  const isTipSaved = savedTipIds.includes(todayTip.id);
 
   return (
-    <div>
-      {/* Top Hero Welcome Card */}
-      <div className="glass-card" style={{
-        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.18) 0%, rgba(20, 184, 166, 0.12) 100%)',
-        border: '1px solid rgba(167, 139, 250, 0.3)',
-        marginBottom: '28px',
-        padding: '30px'
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* 1. Warm Greeting & Today's Overview Hero */}
+      <div className="clean-card" style={{
+        background: '#FFFFFF',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 'var(--radius-lg)',
+        padding: '28px 32px'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <span className="badge badge-purple">Command Center</span>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Personal Growth Feedback Loop
-              </span>
+              <span className="badge badge-sage">Daily Command Center</span>
+              {isDemoMode ? (
+                <span className="badge badge-amber">Demo Sandbox</span>
+              ) : (
+                <span className="badge badge-teal">Personal Space</span>
+              )}
             </div>
-            <h3 style={{ fontSize: '2.1rem', fontWeight: 900, letterSpacing: '-0.02em' }}>
-              Welcome back, <span className="gradient-title">{user.username}</span>
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: '640px', marginTop: '4px' }}>
-              "Understand yourself. Train your mind. Become who you intend to be."
+            <h2 style={{ fontSize: '1.85rem', fontWeight: 700, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+              {getGreeting()}, {user.username}
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: '600px', marginTop: '4px' }}>
+              Focus on intentional practice today. Your routine adapts to your available time and recent drills.
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Practice Points Stat */}
             <div style={{
-              background: 'rgba(0, 0, 0, 0.35)',
-              padding: '14px 20px',
+              background: 'var(--bg-secondary)',
+              padding: '12px 20px',
               borderRadius: 'var(--radius-md)',
               border: '1px solid var(--border-subtle)',
               textAlign: 'center'
             }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                Discipline Score
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                Practice Points
               </div>
-              <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 900, color: '#ffffff' }}>
-                {user.disciplineScore} <span style={{ fontSize: '0.9rem', color: 'var(--primary-light)' }}>/ 100</span>
+              <div className="font-mono" style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--primary)' }}>
+                {practicePoints}
               </div>
             </div>
 
+            {/* Sessions Today Stat */}
             <div style={{
-              background: 'rgba(0, 0, 0, 0.35)',
-              padding: '14px 20px',
+              background: 'var(--bg-secondary)',
+              padding: '12px 20px',
               borderRadius: 'var(--radius-md)',
               border: '1px solid var(--border-subtle)',
               textAlign: 'center'
             }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                Active Streak
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                Sessions Today
               </div>
-              <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 900, color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                <Flame size={24} />
-                <span>{user.currentStreak}d</span>
+              <div className="font-mono" style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--accent-teal)' }}>
+                {completedToday}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Recommended Next Action Banner */}
+      {/* 2. Today's Daily Tip (Curated from 1,000+ Verified Tips) */}
       <div style={{
-        background: 'rgba(12, 12, 20, 0.8)',
-        border: '1px solid rgba(20, 184, 166, 0.3)',
+        background: 'var(--bg-card-inner)',
+        border: '1px solid var(--border-subtle)',
         borderRadius: 'var(--radius-md)',
-        padding: '16px 24px',
-        marginBottom: '28px',
+        padding: '18px 24px',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'space-between',
-        flexWrap: 'wrap',
         gap: '16px',
-        boxShadow: '0 4px 20px rgba(20, 184, 166, 0.15)'
+        flexWrap: 'wrap'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', flex: 1, minWidth: '260px' }}>
           <div style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, var(--accent-teal) 0%, #0d9488 100%)',
+            width: '32px',
+            height: '32px',
+            borderRadius: '6px',
+            background: 'var(--accent-amber-subtle)',
+            color: 'var(--accent-amber)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#fff'
+            flexShrink: 0
           }}>
-            <suggestedAction.icon size={22} />
+            <Sparkles size={16} />
           </div>
           <div>
-            <div style={{ fontSize: '0.75rem', color: '#2dd4bf', fontWeight: 700, textTransform: 'uppercase' }}>
-              Recommended Next Step
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-amber)', letterSpacing: '0.04em' }}>
+                Tip of the Day • {todayTip.category}
+              </span>
+              {todayTip.authorOrOrigin && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({todayTip.authorOrOrigin})</span>
+              )}
             </div>
-            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#ffffff' }}>
-              {suggestedAction.title}
-            </div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-              {suggestedAction.subtitle}
+            <div style={{ fontSize: '0.92rem', color: 'var(--text-main)', lineHeight: 1.5 }}>
+              "{todayTip.text}"
             </div>
           </div>
         </div>
 
-        <button onClick={suggestedAction.onClick} className="btn btn-teal">
-          <span>{suggestedAction.actionText}</span>
-          <ArrowRight size={16} />
-        </button>
-      </div>
-
-      {/* 4 Core Pillar Metrics Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '28px' }}>
-        {/* Habit Completion Card */}
-        <div 
-          onClick={() => setActiveTab('discipline')} 
-          className="glass-card" 
-          style={{ cursor: 'pointer', padding: '22px' }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
-              Habits Completed
-            </span>
-            <Target size={18} color="#10b981" />
-          </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#34d399' }}>
-            {completedGoodCount} <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>/ {goodHabits.length}</span>
-          </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            {avoidedBadCount} of {badHabits.length} bad habits avoided
-          </div>
-        </div>
-
-        {/* Focus Sprint Card */}
-        <div 
-          onClick={() => setActiveTab('discipline')} 
-          className="glass-card" 
-          style={{ cursor: 'pointer', padding: '22px' }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
-              Focus Sprints
-            </span>
-            <Clock size={18} color="#14b8a6" />
-          </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#2dd4bf' }}>
-            {totalFocusMinutes} <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>Mins</span>
-          </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Across {focusSessions.length} deep work session(s)
-          </div>
-        </div>
-
-        {/* Memory Gym Card */}
-        <div 
-          onClick={() => setActiveTab('memory')} 
-          className="glass-card" 
-          style={{ cursor: 'pointer', padding: '22px' }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
-              Memory Gym Tests
-            </span>
-            <Brain size={18} color="var(--primary-light)" />
-          </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--primary-light)' }}>
-            {memorySessions.length} <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>Played</span>
-          </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Avg accuracy: {memorySessions.length > 0 ? Math.round(memorySessions.reduce((a, s) => a + s.accuracy, 0) / memorySessions.length) : 0}%
-          </div>
-        </div>
-
-        {/* Mindfulness Card */}
-        <div 
-          onClick={() => setActiveTab('mindfulness')} 
-          className="glass-card" 
-          style={{ cursor: 'pointer', padding: '22px' }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
-              Mindfulness Time
-            </span>
-            <Wind size={18} color="#818cf8" />
-          </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#a5b4fc' }}>
-            {Math.round(mindfulnessSessions.reduce((a, s) => a + s.durationSeconds, 0) / 60)} <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>Mins</span>
-          </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            {mindfulnessSessions.length} session(s) completed
-          </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            onClick={() => toggleSaveTip(todayTip.id)}
+            className="btn btn-secondary btn-sm"
+            style={{ color: isTipSaved ? 'var(--primary)' : 'var(--text-secondary)' }}
+            title={isTipSaved ? 'Remove from saved tips' : 'Save tip to review later'}
+          >
+            <Bookmark size={14} fill={isTipSaved ? 'currentColor' : 'none'} />
+            <span>{isTipSaved ? 'Saved' : 'Save'}</span>
+          </button>
+          <button
+            onClick={() => dismissTip(todayTip.id)}
+            className="btn btn-secondary btn-sm"
+            title="Dismiss this tip for today"
+          >
+            <X size={14} />
+          </button>
         </div>
       </div>
 
-      {/* Mid Section: Chronotype Schedule + Pattern Insight */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '28px', marginBottom: '28px' }}>
-        {/* Daily Schedule Preview */}
-        <div className="glass-card" style={{ padding: '28px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Calendar size={18} color="var(--primary-light)" />
-              <h4 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Today's Synchronized Schedule</h4>
-            </div>
-            <button onClick={() => setActiveTab('bodyclock')} className="btn btn-secondary btn-sm">
-              <span>View Full</span>
-              <ArrowRight size={14} />
-            </button>
+      {/* 3. Today's Suggested Practice (Duration Selector: 5m, 7m, 10m) */}
+      <div className="clean-card" style={{ padding: '24px 28px' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '20px',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)' }}>
+              Today's Suggested Practice
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+              Choose your available time. We dynamically distribute activities without rigid completion pressure.
+            </p>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {todaySchedule.slice(0, 4).map((block, idx) => (
-              <div
-                key={block.id || idx}
+          {/* 5 / 7 / 10 Minute Duration Choice */}
+          <div style={{ display: 'flex', gap: '6px', background: 'var(--bg-secondary)', padding: '3px', borderRadius: 'var(--radius-md)' }}>
+            {([5, 7, 10] as const).map(mins => (
+              <button
+                key={mins}
+                onClick={() => setSelectedDuration(mins)}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'var(--bg-card-inner)',
-                  border: '1px solid var(--border-subtle)'
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: selectedDuration === mins ? '#FFFFFF' : 'transparent',
+                  color: selectedDuration === mins ? 'var(--primary)' : 'var(--text-secondary)',
+                  fontWeight: selectedDuration === mins ? 700 : 500,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  boxShadow: selectedDuration === mins ? 'var(--shadow-sm)' : 'none'
                 }}
               >
-                <div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{block.title}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{block.notes}</div>
-                </div>
-                <span className="font-mono" style={{ fontSize: '0.85rem', color: 'var(--primary-light)', fontWeight: 700 }}>
-                  {block.startTime} – {block.endTime}
-                </span>
-              </div>
+                {mins} Minutes
+              </button>
             ))}
           </div>
         </div>
 
-        {/* Grounded Behavioral Pattern Insight */}
-        <div className="glass-card" style={{ padding: '28px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Sparkles size={18} color="#2dd4bf" />
-              <h4 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Grounded Pattern Insight</h4>
-            </div>
-            <span className="badge badge-teal" style={{ fontSize: '0.7rem' }}>
-              {primaryInsight?.confidence || 'Active Analysis'}
-            </span>
-          </div>
+        {/* Suggested Practice Cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '16px'
+        }}>
+          {recommendations.map(act => (
+            <div
+              key={act.id}
+              style={{
+                background: 'var(--bg-card-inner)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-md)',
+                padding: '18px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span className="badge badge-sage">
+                    {act.categoryLabel}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    <Clock size={13} />
+                    <span>{act.durationMinutes}m</span>
+                  </div>
+                </div>
 
-          <div className="glass-card-inner" style={{ padding: '18px', marginBottom: '16px' }}>
-            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase', marginBottom: '6px' }}>
-              {primaryInsight?.title || 'Personal Growth Calibration'}
-            </div>
-            <p style={{ fontSize: '0.9rem', color: '#f8fafc', lineHeight: 1.6, marginBottom: '10px' }}>
-              {primaryInsight?.observation || 'Recording consistent daily logs will reveal how sleep duration and focus timing impact your energy.'}
-            </p>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              <strong>Tip:</strong> {primaryInsight?.recommendation || 'Maintain steady bedtime hours to protect morning cognitive stamina.'}
-            </p>
-          </div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '4px' }}>
+                  {act.title}
+                </div>
+                <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: '16px' }}>
+                  {act.reason}
+                </div>
+              </div>
 
-          <button onClick={() => setActiveTab('patterns')} className="btn btn-secondary btn-sm" style={{ width: '100%' }}>
-            <span>Explore All Behavioral Correlations</span>
-            <ArrowRight size={14} />
-          </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  onClick={() => setActiveTab(act.targetTab)}
+                  className="btn btn-primary btn-sm"
+                  style={{ flex: 1 }}
+                >
+                  <Play size={13} fill="currentColor" />
+                  <span>Begin ({act.durationMinutes}m)</span>
+                </button>
+                <button
+                  onClick={() => setDismissedRecIds(prev => [...prev, act.id])}
+                  className="btn btn-secondary btn-sm"
+                  title="Replace with alternative activity"
+                >
+                  <RotateCcw size={13} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. Real Performance Comparison with Previous Session */}
+      <div className="clean-card" style={{ padding: '24px 28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <BarChart3 size={18} color="var(--primary)" />
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>
+            Comparison with Previous Comparable Session
+          </h3>
+        </div>
+
+        {comparison ? (
+          <div>
+            <div style={{
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)',
+              padding: '14px 18px',
+              fontSize: '0.92rem',
+              color: 'var(--text-main)',
+              lineHeight: 1.5,
+              marginBottom: '10px'
+            }}>
+              <strong>{comparison.summary}</strong>
+              {comparison.detail && (
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  {comparison.detail}
+                </div>
+              )}
+            </div>
+            {latestSession && (
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Latest recorded session: <strong>{latestSession.activityTitle}</strong> on {new Date(latestSession.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({Math.round(latestSession.durationSeconds / 60)} min).
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-md)',
+            padding: '14px 18px',
+            fontSize: '0.88rem',
+            color: 'var(--text-secondary)'
+          }}>
+            Establishing baseline — complete a session in Memory Gym, Chanting, or Meditation to view your direct progress comparison against prior sessions.
+          </div>
+        )}
+      </div>
+
+      {/* 5. Quick Access Grid to Activities */}
+      <div>
+        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '14px', color: 'var(--text-main)' }}>
+          Quick Access Disciplines
+        </h3>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '14px'
+        }}>
+          {[
+            {
+              id: 'games',
+              title: 'Cognitive Games',
+              desc: 'Sequence chimes & pattern memory',
+              icon: Brain,
+              tag: 'Memory Gym'
+            },
+            {
+              id: 'library',
+              title: 'Cultural Library',
+              desc: 'Audible verses, shlokas & poems',
+              icon: BookOpen,
+              tag: 'Literature'
+            },
+            {
+              id: 'meditation',
+              title: 'Meditation Studio',
+              desc: '8 guided breathing techniques',
+              icon: Wind,
+              tag: 'Breathwork'
+            },
+            {
+              id: 'practice',
+              title: 'Practice Routine',
+              desc: 'Circadian schedule & focus sprint',
+              icon: Target,
+              tag: 'Consistency'
+            },
+          ].map(mod => {
+            const Icon = mod.icon;
+            return (
+              <div
+                key={mod.id}
+                onClick={() => setActiveTab(mod.id)}
+                className="clean-card"
+                style={{
+                  padding: '18px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  transition: 'border-color 0.15s ease'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <Icon size={20} color="var(--primary)" />
+                    <span className="badge badge-sage" style={{ fontSize: '0.7rem' }}>{mod.tag}</span>
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: '0.98rem', color: 'var(--text-main)', marginBottom: '3px' }}>
+                    {mod.title}
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                    {mod.desc}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--primary)', marginTop: '14px' }}>
+                  <span>Open Discipline</span>
+                  <ArrowRight size={14} />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

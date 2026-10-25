@@ -210,7 +210,7 @@ export const BodyClockView: React.FC = () => {
                 onChange={e => setCommitments(e.target.value)}
               />
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                SelfSync will shape your schedule realistically so you aren't recommended late awakenings when you have mandatory classes.
+                SMRITARA will shape your schedule realistically so you aren't recommended late awakenings when you have mandatory classes.
               </span>
             </div>
           )}

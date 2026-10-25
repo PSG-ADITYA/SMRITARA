@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Calendar, PlusCircle, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Calendar, PlusCircle, CheckCircle2, Compass } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 interface HeaderProps {
@@ -9,7 +9,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ title, subtitle, onOpenLogModal }) => {
-  const { user, getTodayLog, setActiveTab } = useApp();
+  const { user, getTodayLog, isDemoMode, exitDemoMode, setActiveTab } = useApp();
   const todayLog = getTodayLog();
 
   const formattedDate = new Date().toLocaleDateString('en-US', {
@@ -18,90 +18,131 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, onOpenLogModal 
     day: 'numeric'
   });
 
-  const hasApiKey = Boolean(user.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY);
-
   return (
-    <header style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: '28px',
-      flexWrap: 'wrap',
-      gap: '16px'
-    }}>
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <h2 style={{ fontSize: '1.85rem', fontWeight: 800 }}>{title}</h2>
-          {user.chronotypeProfile && (
-            <span className="badge badge-purple" style={{ textTransform: 'capitalize' }}>
-              {user.chronotypeProfile.chronotype} Chronotype
-            </span>
-          )}
-        </div>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', marginTop: '2px' }}>
-          {subtitle}
-        </p>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        {/* Date Display */}
+    <div style={{ marginBottom: '24px' }}>
+      {/* Demo Mode Notice */}
+      {isDemoMode && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          padding: '8px 14px',
+          justifyContent: 'space-between',
+          padding: '8px 16px',
+          background: 'var(--accent-amber-subtle)',
+          border: '1px solid rgba(198, 128, 25, 0.25)',
           borderRadius: 'var(--radius-md)',
-          background: 'var(--bg-card-inner)',
-          border: '1px solid var(--border-subtle)',
-          fontSize: '0.85rem',
-          color: 'var(--text-secondary)'
+          marginBottom: '16px',
+          color: 'var(--accent-amber)',
+          fontSize: '0.84rem'
         }}>
-          <Calendar size={15} color="var(--primary-light)" />
-          <span>{formattedDate}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Compass size={16} />
+            <span>
+              <strong>Demo Sandbox:</strong> Sample records active. Changes are local to the demo session.
+            </span>
+          </div>
+          <button
+            onClick={exitDemoMode}
+            className="btn btn-secondary btn-sm"
+            style={{
+              padding: '3px 10px',
+              fontSize: '0.75rem',
+              color: 'var(--accent-amber)',
+              borderColor: 'rgba(198, 128, 25, 0.3)'
+            }}
+          >
+            Exit Demo
+          </button>
+        </div>
+      )}
+
+      <header style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '14px'
+      }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h1 style={{ fontSize: '1.65rem', fontWeight: 700, color: 'var(--text-main)' }}>{title}</h1>
+            {user.chronotypeProfile && (
+              <span className="badge badge-sage" style={{ textTransform: 'capitalize' }}>
+                {user.chronotypeProfile.chronotype} Chronotype
+              </span>
+            )}
+            {user.onboardingPreferences?.preferredLanguage && (
+              <span className="badge badge-teal" style={{ textTransform: 'capitalize' }}>
+                {user.onboardingPreferences.preferredLanguage}
+              </span>
+            )}
+          </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '2px' }}>
+            {subtitle}
+          </p>
         </div>
 
-        {/* AI Status Badge */}
-        <div 
-          onClick={() => setActiveTab('settings')}
-          style={{
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Calendar Display */}
+          <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            padding: '8px 12px',
+            padding: '7px 12px',
             borderRadius: 'var(--radius-md)',
-            background: hasApiKey ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-            border: `1px solid ${hasApiKey ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
-            fontSize: '0.78rem',
-            fontWeight: 600,
-            color: hasApiKey ? '#34d399' : '#fbbf24',
-            cursor: 'pointer'
-          }}
-          title={hasApiKey ? 'Connected to live Gemini 2.5 Flash' : 'Running in offline grounded engine. Click to add key.'}
-        >
-          <Sparkles size={14} />
-          <span>{hasApiKey ? 'Gemini 2.5' : 'Offline Engine'}</span>
-        </div>
+            background: '#FFFFFF',
+            border: '1px solid var(--border-subtle)',
+            fontSize: '0.84rem',
+            color: 'var(--text-secondary)'
+          }}>
+            <Calendar size={14} color="var(--primary)" />
+            <span>{formattedDate}</span>
+          </div>
 
-        {/* Quick Log Button */}
-        {onOpenLogModal && (
+          {/* AI Coach Interactive Button */}
           <button 
-            onClick={onOpenLogModal}
-            className={`btn ${todayLog ? 'btn-secondary' : 'btn-primary'}`}
+            onClick={() => setActiveTab('coach')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 13px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--primary-subtle)',
+              border: '1px solid rgba(40, 84, 67, 0.25)',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              color: 'var(--primary)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            className="hover-subtle"
+            title="Open SMRITARA AI Life Coach"
           >
-            {todayLog ? (
-              <>
-                <CheckCircle2 size={16} color="#10b981" />
-                <span>Today Logged ({todayLog.disciplineScore} pts)</span>
-              </>
-            ) : (
-              <>
-                <PlusCircle size={16} />
-                <span>Log Today</span>
-              </>
-            )}
+            <Sparkles size={13} />
+            <span>AI Coach Ready</span>
           </button>
-        )}
-      </div>
-    </header>
+
+          {/* Quick Check-In Button */}
+          {onOpenLogModal && (
+            <button 
+              onClick={onOpenLogModal}
+              className={`btn ${todayLog ? 'btn-secondary' : 'btn-primary'} btn-sm`}
+            >
+              {todayLog ? (
+                <>
+                  <CheckCircle2 size={15} color="#2E7D32" />
+                  <span>Check-In Recorded</span>
+                </>
+              ) : (
+                <>
+                  <PlusCircle size={15} />
+                  <span>Daily Check-In</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </header>
+    </div>
   );
 };
