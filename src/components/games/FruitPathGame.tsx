@@ -80,7 +80,14 @@ export const FruitPathGame: React.FC<FruitPathGameProps> = ({
     return () => clearInterval(timer);
   }, [gameState, round]);
 
+  useEffect(() => {
+    return () => {
+      spokenGuideService.stop();
+    };
+  }, []);
+
   const handleStartRound = () => {
+    spokenGuideService.stop();
     audioService.playStartChime();
     setUserSelectedIds([]);
     setMistakeTileId(null);
@@ -88,10 +95,15 @@ export const FruitPathGame: React.FC<FruitPathGameProps> = ({
   };
 
   const handleHearRules = () => {
-    spokenGuideService.speak(GUIDE_SCRIPTS.fruitPath);
+    if (spokenGuideService.getState() === 'speaking') {
+      spokenGuideService.stop();
+    } else {
+      spokenGuideService.speak(GUIDE_SCRIPTS.fruitPath);
+    }
   };
 
   const handleReplayPath = () => {
+    spokenGuideService.stop();
     setReplaysUsed(prev => prev + 1);
     setGameState('memorize');
   };

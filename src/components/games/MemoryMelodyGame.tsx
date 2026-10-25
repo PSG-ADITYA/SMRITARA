@@ -61,8 +61,15 @@ export const MemoryMelodyGame: React.FC<MemoryMelodyGameProps> = ({
   const [finalScore, setFinalScore] = useState<{ score: number; accuracy: number; points: number } | null>(null);
   const [isMuted, setIsMuted] = useState<boolean>(melodySynth.isSoundMuted());
 
+  useEffect(() => {
+    return () => {
+      spokenGuideService.stop();
+    };
+  }, []);
+
   // Play the melody sequence
   const playSequencePlayback = async () => {
+    spokenGuideService.stop();
     setGameState('listening');
     setActiveFlashingNoteId(null);
     const timing = getTempoTiming(tempo);
@@ -82,6 +89,7 @@ export const MemoryMelodyGame: React.FC<MemoryMelodyGameProps> = ({
   };
 
   const handleStartGame = () => {
+    spokenGuideService.stop();
     setUserSequence([]);
     setFinalScore(null);
     playSequencePlayback();
@@ -89,6 +97,7 @@ export const MemoryMelodyGame: React.FC<MemoryMelodyGameProps> = ({
 
   const handleReplayMelody = () => {
     if (gameState !== 'recall') return;
+    spokenGuideService.stop();
     setReplaysUsed(prev => prev + 1);
     playSequencePlayback();
   };
@@ -226,9 +235,16 @@ export const MemoryMelodyGame: React.FC<MemoryMelodyGameProps> = ({
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
             <button
-              onClick={() => spokenGuideService.speak(GUIDE_SCRIPTS.melody)}
+              onClick={() => {
+                if (spokenGuideService.getState() === 'speaking') {
+                  spokenGuideService.stop();
+                } else {
+                  spokenGuideService.speak(GUIDE_SCRIPTS.melody);
+                }
+              }}
               className="btn btn-secondary"
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              title="Toggle spoken rules"
             >
               <Volume2 size={16} />
               <span>Spoken Guide</span>

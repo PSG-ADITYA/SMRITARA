@@ -8,7 +8,7 @@ import {
   type GameDifficulty,
 } from '../../engine/games/numberSequenceEngine';
 import { evaluateAdaptiveDifficulty } from '../../engine/games/adaptiveDifficultyEngine';
-import { speakGameInstruction, speakRoundFeedback } from '../../engine/spokenGuideService';
+import { spokenGuideService, speakGameInstruction } from '../../engine/spokenGuideService';
 import { Play, RotateCcw, ArrowRight, Eye, CheckCircle2, XCircle, Volume2, ArrowLeftRight, Delete } from 'lucide-react';
 
 interface NumberSequenceGameProps {
@@ -48,6 +48,7 @@ export const NumberSequenceGame: React.FC<NumberSequenceGameProps> = ({
   const flashTimeouts = useRef<any[]>([]);
 
   const startNewRound = (diff: GameDifficulty = difficulty, recallMode: SequenceRecallMode = mode) => {
+    spokenGuideService.stop();
     clearAllTimeouts();
     const newRound = generateNumberSequenceRound(diff, recallMode);
     setRound(newRound);
@@ -73,12 +74,11 @@ export const NumberSequenceGame: React.FC<NumberSequenceGameProps> = ({
   };
 
   const beginFlashing = () => {
+    spokenGuideService.stop();
     setPhase('flashing');
     setUserDigits([]);
     setActiveDigitIndex(-1);
     setStartTime(Date.now());
-
-    speakGameInstruction('number-sequence');
 
     const speed = round.displaySpeedMs;
 
@@ -128,8 +128,6 @@ export const NumberSequenceGame: React.FC<NumberSequenceGameProps> = ({
     setScore(calculatedScore);
     setPhase('result');
 
-    speakRoundFeedback(report.isCorrect ? 'high' : report.accuracy >= 50 ? 'medium' : 'low', 'number-sequence');
-
     const adaptive = evaluateAdaptiveDifficulty({
       gameId: 'number-sequence',
       currentDifficulty: difficulty,
@@ -169,7 +167,10 @@ export const NumberSequenceGame: React.FC<NumberSequenceGameProps> = ({
   }, [phase, userDigits, round.digits.length]);
 
   useEffect(() => {
-    return () => clearAllTimeouts();
+    return () => {
+      spokenGuideService.stop();
+      clearAllTimeouts();
+    };
   }, []);
 
   return (
@@ -229,10 +230,16 @@ export const NumberSequenceGame: React.FC<NumberSequenceGameProps> = ({
           </div>
 
           <button
-            onClick={() => speakGameInstruction('number-sequence')}
+            onClick={() => {
+              if (spokenGuideService.getState() === 'speaking') {
+                spokenGuideService.stop();
+              } else {
+                speakGameInstruction('number-sequence');
+              }
+            }}
             className="btn btn-secondary btn-sm"
             style={{ padding: '6px 10px' }}
-            title="Listen to spoken instructions"
+            title="Listen to spoken instructions (Click to stop)"
           >
             <Volume2 size={16} />
           </button>

@@ -13,7 +13,7 @@ import {
   type GameDifficulty,
 } from '../../engine/games/patternMemoryEngine';
 import { evaluateAdaptiveDifficulty } from '../../engine/games/adaptiveDifficultyEngine';
-import { speakGameInstruction, speakRoundFeedback } from '../../engine/spokenGuideService';
+import { spokenGuideService, speakGameInstruction, speakRoundFeedback } from '../../engine/spokenGuideService';
 import { Play, RotateCcw, ArrowRight, Eye, CheckCircle2, AlertCircle, Info, Sparkles, Volume2 } from 'lucide-react';
 
 interface PatternMemoryGameProps {
@@ -53,6 +53,7 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
 
   // Initialize a fresh round
   const startNewRound = (diff: GameDifficulty = difficulty, seed?: string) => {
+    spokenGuideService.stop();
     if (timerRef.current) clearInterval(timerRef.current);
     const newRound = generatePatternRound(diff, seed);
     setRound(newRound);
@@ -69,12 +70,11 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
   };
 
   const beginMemorization = () => {
+    spokenGuideService.stop();
     setPhase('memorize');
     setTimeLeft(round.memorizeSeconds);
     const roundStart = Date.now();
     setStartTime(roundStart);
-
-    speakGameInstruction('pattern-memory');
 
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
@@ -131,11 +131,6 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
     setScore(finalPts);
     setPhase('result');
 
-    speakRoundFeedback(
-      report.isPerfect ? 'high' : report.accuracy >= 60 ? 'medium' : 'low',
-      'pattern-memory'
-    );
-
     // Adaptive difficulty evaluation
     const mistakes = report.discrepancies.length;
     setRecentMistakes(mistakes);
@@ -164,6 +159,7 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
 
   useEffect(() => {
     return () => {
+      spokenGuideService.stop();
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
@@ -200,10 +196,16 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
           </div>
 
           <button
-            onClick={() => speakGameInstruction('pattern-memory')}
+            onClick={() => {
+              if (spokenGuideService.getState() === 'speaking') {
+                spokenGuideService.stop();
+              } else {
+                speakGameInstruction('pattern-memory');
+              }
+            }}
             className="btn btn-secondary btn-sm"
             style={{ padding: '6px 10px' }}
-            title="Listen to spoken instructions"
+            title="Listen to spoken instructions (Click to stop)"
           >
             <Volume2 size={16} />
           </button>

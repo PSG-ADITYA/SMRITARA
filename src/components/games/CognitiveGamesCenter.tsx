@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { FruitPathGame } from './FruitPathGame';
 import { MemoryMelodyGame } from './MemoryMelodyGame';
@@ -9,7 +9,7 @@ import { MemoryMatchGame } from '../smritiveda/MemoryMatchGame';
 import { ObjectMemoryGame } from '../smritiveda/ObjectMemoryGame';
 import { PassageRecallGame } from '../smritiveda/PassageRecallGame';
 import { GameBadgeSVG } from '../common/icons/GameBadges';
-import { speakGameInstruction, speakRoundFeedback } from '../../engine/spokenGuideService';
+import { spokenGuideService, speakGameInstruction, speakRoundFeedback } from '../../engine/spokenGuideService';
 import {
   Brain,
   Play,
@@ -165,10 +165,16 @@ export const CognitiveGamesCenter: React.FC = () => {
     return item.category === selectedCategory;
   });
 
+  useEffect(() => {
+    return () => {
+      spokenGuideService.stop();
+    };
+  }, []);
+
   const handleLaunchGame = (gameId: string) => {
+    spokenGuideService.stop();
     setActiveGameId(gameId);
     setLastResult(null);
-    speakGameInstruction(gameId);
   };
 
   const handleGameComplete = (result: {
@@ -199,10 +205,12 @@ export const CognitiveGamesCenter: React.FC = () => {
   };
 
   const handleExitGame = () => {
+    spokenGuideService.stop();
     setShowExitConfirm(true);
   };
 
   const confirmExit = () => {
+    spokenGuideService.stop();
     setActiveGameId(null);
     setShowExitConfirm(false);
   };
@@ -280,10 +288,16 @@ export const CognitiveGamesCenter: React.FC = () => {
 
             <div className="cgc-hud-right">
               <button
-                onClick={() => speakGameInstruction(activeGameId)}
+                onClick={() => {
+                  if (spokenGuideService.getState() === 'speaking') {
+                    spokenGuideService.stop();
+                  } else if (activeGameId) {
+                    speakGameInstruction(activeGameId);
+                  }
+                }}
                 className="btn btn-teal btn-sm"
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                title="Hear rules spoken aloud"
+                title="Hear rules spoken aloud (Click to stop)"
               >
                 <Volume2 size={15} />
                 <span>Spoken Rules</span>

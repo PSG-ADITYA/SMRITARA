@@ -34,6 +34,11 @@ export const SpokenGuideBar: React.FC<SpokenGuideBarProps> = ({ onStartTour }) =
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    // Platform-wide safeguard: stop any ongoing narration whenever navigating across tabs
+    spokenGuideService.stop();
+  }, [activeTab]);
+
   const getContextScript = (): string => {
     switch (activeTab) {
       case 'games':

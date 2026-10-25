@@ -8,7 +8,7 @@ import {
   type GameDifficulty,
 } from '../../engine/games/diceMemoryEngine';
 import { evaluateAdaptiveDifficulty } from '../../engine/games/adaptiveDifficultyEngine';
-import { speakGameInstruction, speakRoundFeedback } from '../../engine/spokenGuideService';
+import { spokenGuideService, speakGameInstruction, speakRoundFeedback } from '../../engine/spokenGuideService';
 import { Play, RotateCcw, ArrowRight, Eye, CheckCircle2, XCircle, Info, Sparkles, Volume2, Layers } from 'lucide-react';
 
 interface DiceMemoryGameProps {
@@ -51,6 +51,7 @@ export const DiceMemoryGame: React.FC<DiceMemoryGameProps> = ({
   const timerRef = useRef<any>(null);
 
   const startNewRound = (diff: GameDifficulty = difficulty, seed?: string) => {
+    spokenGuideService.stop();
     if (timerRef.current) clearInterval(timerRef.current);
     const newRound = generateDiceRound(diff, seed);
     setRound(newRound);
@@ -68,11 +69,10 @@ export const DiceMemoryGame: React.FC<DiceMemoryGameProps> = ({
   };
 
   const beginInspection = () => {
+    spokenGuideService.stop();
     setPhase('inspect');
     setTimeLeft(round.memorizeSeconds);
     setStartTime(Date.now());
-
-    speakGameInstruction('dice-memory');
 
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
@@ -129,11 +129,6 @@ export const DiceMemoryGame: React.FC<DiceMemoryGameProps> = ({
     setScore(calculatedScore);
     setPhase('result');
 
-    speakRoundFeedback(
-      accuracy === 100 ? 'high' : accuracy >= 50 ? 'medium' : 'low',
-      'dice-memory'
-    );
-
     const adaptive = evaluateAdaptiveDifficulty({
       gameId: 'dice-memory',
       currentDifficulty: difficulty,
@@ -158,6 +153,7 @@ export const DiceMemoryGame: React.FC<DiceMemoryGameProps> = ({
 
   useEffect(() => {
     return () => {
+      spokenGuideService.stop();
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
@@ -206,10 +202,16 @@ export const DiceMemoryGame: React.FC<DiceMemoryGameProps> = ({
           </div>
 
           <button
-            onClick={() => speakGameInstruction('dice-memory')}
+            onClick={() => {
+              if (spokenGuideService.getState() === 'speaking') {
+                spokenGuideService.stop();
+              } else {
+                speakGameInstruction('dice-memory');
+              }
+            }}
             className="btn btn-secondary btn-sm"
             style={{ padding: '6px 10px' }}
-            title="Listen to spoken instructions"
+            title="Listen to spoken instructions (Click to stop)"
           >
             <Volume2 size={16} />
           </button>
