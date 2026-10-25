@@ -183,7 +183,7 @@ export const ObjectMemoryGame: React.FC<{ onComplete?: () => void }> = ({ onComp
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
                   <MemoryObjectSVG objectKey={item.id} size={44} />
                 </div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff' }}>{item.label}</div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main, #1C221E)' }}>{item.label}</div>
               </div>
             ))}
           </div>

@@ -4,10 +4,41 @@ import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
 
+function resolveApiKey(env: Record<string, string>): string {
+  let k = process.env.GEMINI_API_KEY || env.GEMINI_API_KEY || process.env.GEMINI_KEY || env.GEMINI_KEY || process.env.GOOGLE_API_KEY || env.GOOGLE_API_KEY;
+  if (!k) {
+    try {
+      const envPath = path.resolve(process.cwd(), '.env');
+      if (fs.existsSync(envPath)) {
+        const lines = fs.readFileSync(envPath, 'utf-8').split('\n');
+        for (const l of lines) {
+          const trimmed = l.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          const eq = trimmed.indexOf('=');
+          if (eq !== -1) {
+            const key = trimmed.slice(0, eq).trim();
+            const val = trimmed.slice(eq + 1).trim();
+            if (key === 'GEMINI_API_KEY' || key === 'GEMINI_KEY' || key === 'GOOGLE_API_KEY') {
+              k = val;
+              break;
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+  if (k) {
+    k = k.trim();
+    if ((k.startsWith('"') && k.endsWith('"')) || (k.startsWith("'") && k.endsWith("'"))) {
+      k = k.slice(1, -1).trim();
+    }
+  }
+  return k || '';
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const apiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
   return {
     plugins: [
@@ -23,10 +54,14 @@ export default defineConfig(({ mode }) => {
               return;
             }
 
+            const apiKey = resolveApiKey(env);
             if (!apiKey) {
               res.statusCode = 200;
               res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ available: false, error: 'GEMINI_API_KEY not configured on server' }));
+              res.end(JSON.stringify({
+                available: false,
+                error: 'GEMINI_API_KEY is not configured in environment variables. Please ensure GEMINI_API_KEY is set in .env'
+              }));
               return;
             }
 
@@ -37,7 +72,7 @@ export default defineConfig(({ mode }) => {
                 const { contents, generationConfig } = JSON.parse(bodyStr || '{}');
                 
                 // Models to try in order of speed and availability
-                const models = ['gemini-2.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash'];
+                const models = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
                 let lastError: string | null = null;
                 let responseData: any = null;
                 let responseStatus = 500;
@@ -58,6 +93,22 @@ export default defineConfig(({ mode }) => {
                       responseData = data;
                       responseStatus = geminiRes.status;
                       break;
+                    } else if (geminiRes.status === 400 && data?.error?.message?.toLowerCase().includes('key')) {
+                      res.statusCode = 200;
+                      res.setHeader('Content-Type', 'application/json');
+                      res.end(JSON.stringify({
+                        available: false,
+                        error: 'The configured GEMINI_API_KEY was rejected by Google AI. Please verify the key in Google AI Studio.'
+                      }));
+                      return;
+                    } else if (geminiRes.status === 429) {
+                      res.statusCode = 429;
+                      res.setHeader('Content-Type', 'application/json');
+                      res.end(JSON.stringify({
+                        available: false,
+                        error: 'Gemini AI rate limit or quota exceeded. Please wait a moment before sending your next reflection.'
+                      }));
+                      return;
                     } else if (data?.error) {
                       lastError = data.error.message || `Model ${model} returned error`;
                     }

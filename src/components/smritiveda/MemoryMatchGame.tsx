@@ -203,7 +203,7 @@ export const MemoryMatchGame: React.FC<{ onComplete?: () => void }> = ({ onCompl
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
                       <MemoryObjectSVG objectKey={card.icon} size={36} />
                     </div>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ffffff', marginTop: '4px', textAlign: 'center', padding: '0 4px' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-main, #1C221E)', marginTop: '4px', textAlign: 'center', padding: '0 4px' }}>
                       {card.symbol}
                     </div>
                   </>

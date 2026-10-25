@@ -165,49 +165,40 @@ export const DiceMemoryGame: React.FC<DiceMemoryGameProps> = ({
   const currentQ: DiceQuestion | undefined = round.questions[currentQuestionIdx];
 
   return (
-    <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-stone-100 max-w-4xl mx-auto">
+    <div className="clean-card" style={{ maxWidth: '860px', margin: '0 auto', background: '#FFFFFF', padding: '32px' }}>
       {/* Header & Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-100 pb-5 mb-6">
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '18px', marginBottom: '24px' }}>
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 bg-amber-50 text-amber-800 text-xs font-semibold rounded-full border border-amber-200">
-              3D Spatial Recall
-            </span>
-            <span className="text-xs text-stone-600">ID: {round.id.slice(-6)}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="badge badge-teal">3D Spatial Recall</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>ID: {round.id.slice(-6)}</span>
           </div>
-          <h2 className="text-2xl font-bold text-stone-800 font-serif mt-1">3D Dice Memory</h2>
-          <p className="text-xs text-stone-600">
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '6px 0 2px 0', color: 'var(--text-main)' }}>3D Dice Memory</h2>
+          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
             Observe the dice positions, pip values, and color themes in 3D space, then answer recall challenges.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {/* 2D Accessible Mode Toggle */}
           <button
             onClick={() => setUse2DMode(!use2DMode)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
-              use2DMode
-                ? 'bg-amber-100 text-amber-900 border-amber-300'
-                : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
-            }`}
+            className={`btn btn-sm ${use2DMode ? 'btn-teal' : 'btn-secondary'}`}
             title="Toggle between 3D transforms and high-contrast 2D view"
           >
-            <Layers className="w-3.5 h-3.5" />
-            {use2DMode ? '2D View Active' : '3D View Active'}
+            <Layers size={14} />
+            <span>{use2DMode ? '2D View Active' : '3D View Active'}</span>
           </button>
 
           {/* Difficulty */}
-          <div className="flex items-center bg-stone-100 p-1 rounded-xl text-xs font-medium">
+          <div style={{ display: 'flex', background: 'var(--bg-card-inner)', padding: '3px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
             {(['easy', 'medium', 'hard'] as GameDifficulty[]).map(d => (
               <button
                 key={d}
                 onClick={() => handleDifficultyChange(d)}
                 disabled={phase === 'inspect'}
-                className={`px-3 py-1.5 rounded-lg capitalize transition-all ${
-                  difficulty === d
-                    ? 'bg-emerald-800 text-white shadow-sm font-semibold'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
+                className={`btn btn-sm ${difficulty === d ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ textTransform: 'capitalize', padding: '4px 10px', fontSize: '0.76rem' }}
               >
                 {d}
               </button>
@@ -216,16 +207,17 @@ export const DiceMemoryGame: React.FC<DiceMemoryGameProps> = ({
 
           <button
             onClick={() => speakGameInstruction('dice-memory')}
-            className="p-2 text-stone-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-xl transition-colors"
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '6px 10px' }}
             title="Listen to spoken instructions"
           >
-            <Volume2 className="w-5 h-5" />
+            <Volume2 size={16} />
           </button>
 
           {onExit && (
             <button
               onClick={onExit}
-              className="text-xs text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-lg border border-stone-200"
+              className="btn btn-secondary btn-sm"
             >
               Exit
             </button>
@@ -235,30 +227,31 @@ export const DiceMemoryGame: React.FC<DiceMemoryGameProps> = ({
 
       {/* PHASE 1: Ready */}
       {phase === 'ready' && (
-        <div className="text-center py-10 px-4 space-y-6">
-          <div className="flex justify-center gap-4 py-2">
+        <div style={{ textAlign: 'center', padding: '36px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '20px' }}>
             <Die3DCube frontValue={3} colorTheme="emerald" size={68} rotateX={-15} rotateY={30} />
             <Die3DCube frontValue={5} colorTheme="amber" size={68} rotateX={-10} rotateY={-25} />
             <Die3DCube frontValue={6} colorTheme="ruby" size={68} rotateX={20} rotateY={35} />
           </div>
 
-          <div className="max-w-md mx-auto space-y-2">
-            <h3 className="text-xl font-bold text-stone-800 font-serif">Spatial Dice Challenge</h3>
-            <p className="text-sm text-stone-600 leading-relaxed">
-              Observe <strong className="text-emerald-800 font-semibold">{round.diceCount} colored dice</strong>{' '}
+          <div style={{ maxWidth: '480px', margin: '0 auto 24px auto' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>Spatial Dice Challenge</h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+              Observe <strong style={{ color: 'var(--primary)' }}>{round.diceCount} colored dice</strong>{' '}
               rendered in 3D perspective for{' '}
-              <strong className="text-amber-800 font-semibold">{round.memorizeSeconds} seconds</strong>. Remember their
+              <strong style={{ color: 'var(--accent-amber)' }}>{round.memorizeSeconds} seconds</strong>. Remember their
               values, order, and colors.
             </p>
           </div>
 
-          <div className="flex justify-center gap-4 pt-2">
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
             <button
               onClick={beginInspection}
-              className="flex items-center gap-2 px-8 py-3.5 bg-emerald-800 text-white font-semibold rounded-2xl hover:bg-emerald-700 transition-all shadow-md shadow-emerald-900/10 active:scale-95"
+              className="btn btn-primary"
+              style={{ padding: '12px 32px', fontSize: '0.95rem' }}
             >
-              <Play className="w-5 h-5 fill-current" />
-              Begin Inspection ({round.memorizeSeconds}s)
+              <Play size={18} fill="currentColor" />
+              <span>Begin Inspection ({round.memorizeSeconds}s)</span>
             </button>
           </div>
         </div>
@@ -266,34 +259,55 @@ export const DiceMemoryGame: React.FC<DiceMemoryGameProps> = ({
 
       {/* PHASE 2: Inspect */}
       {phase === 'inspect' && (
-        <div className="space-y-6 text-center py-6">
-          <div className="flex items-center justify-center gap-2">
-            <Eye className="w-5 h-5 text-amber-800 animate-pulse" />
-            <span className="text-sm font-semibold text-amber-800">Memorize Scene: {timeLeft}s remaining</span>
+        <div style={{ textAlign: 'center', padding: '16px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '14px' }}>
+            <Eye size={18} color="var(--accent-amber)" />
+            <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--accent-amber)' }}>
+              Memorize Scene: {timeLeft}s remaining
+            </span>
           </div>
 
           {/* Progress Bar */}
-          <div className="w-64 h-2 bg-stone-100 rounded-full mx-auto overflow-hidden">
+          <div style={{ width: '260px', height: '6px', background: 'var(--bg-card-inner)', borderRadius: '9999px', margin: '0 auto 24px auto', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
             <div
-              className="h-full bg-amber-500 transition-all duration-1000 ease-linear rounded-full"
-              style={{ width: `${(timeLeft / round.memorizeSeconds) * 100}%` }}
+              style={{
+                height: '100%',
+                background: 'var(--accent-amber)',
+                transition: 'width 1s linear',
+                width: `${(timeLeft / round.memorizeSeconds) * 100}%`
+              }}
             />
           </div>
 
           {/* 3D Dice Display Scene */}
-          <div className="p-8 bg-gradient-to-b from-stone-50 to-stone-100/60 rounded-3xl border border-stone-200 shadow-inner max-w-2xl mx-auto flex flex-wrap items-center justify-center gap-8 min-h-[220px]">
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '32px',
+              minHeight: '220px',
+              padding: '32px',
+              background: 'var(--bg-card-inner)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-subtle)',
+              maxWidth: '640px',
+              margin: '0 auto'
+            }}
+          >
             {round.dice.map(die => (
-              <div key={die.id} className="flex flex-col items-center gap-3">
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white text-stone-600 border border-stone-200 shadow-xs uppercase tracking-wider">
+              <div key={die.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-full)', background: '#FFFFFF', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', textTransform: 'uppercase' }}>
                   Die #{die.id}
                 </span>
 
                 {use2DMode ? (
-                  <div className="p-2 bg-white rounded-2xl shadow-md border-2 border-emerald-600">
+                  <div style={{ padding: '8px', background: '#FFFFFF', borderRadius: 'var(--radius-md)', border: '2px solid var(--primary)', boxShadow: 'var(--shadow-sm)' }}>
                     <DieFaceSVG value={die.value} size={70} />
                   </div>
                 ) : (
-                  <div className="p-3">
+                  <div style={{ padding: '8px' }}>
                     <Die3DCube
                       frontValue={die.value}
                       colorTheme={die.colorTheme}
@@ -304,7 +318,9 @@ export const DiceMemoryGame: React.FC<DiceMemoryGameProps> = ({
                   </div>
                 )}
 
-                <span className="text-[11px] font-medium text-stone-600 capitalize">{die.colorTheme}</span>
+                <span style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                  {die.colorTheme}
+                </span>
               </div>
             ))}
           </div>
@@ -313,37 +329,48 @@ export const DiceMemoryGame: React.FC<DiceMemoryGameProps> = ({
 
       {/* PHASE 3: Questions */}
       {phase === 'question' && currentQ && (
-        <div className="space-y-6 max-w-xl mx-auto py-4">
-          <div className="flex items-center justify-between text-xs text-stone-600 border-b border-stone-100 pb-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '580px', margin: '0 auto', padding: '16px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
             <span>
               Question {currentQuestionIdx + 1} of {round.questions.length}
             </span>
-            <span className="px-2.5 py-0.5 bg-stone-100 rounded-full font-medium">Dice Hidden</span>
+            <span className="badge badge-neutral">Dice Hidden</span>
           </div>
 
           {/* Question Prompt */}
-          <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 text-center space-y-2">
-            <h3 className="text-lg font-bold text-stone-800">{currentQ.prompt}</h3>
-            <p className="text-xs text-stone-600">Select the option you recall from the 3D scene.</p>
+          <div style={{ background: 'var(--bg-card-inner)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>{currentQ.prompt}</h3>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>Select the option you recall from the 3D scene.</p>
           </div>
 
           {/* Multiple Choice Options */}
-          <div className="grid grid-cols-2 gap-3">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
             {currentQ.options.map((opt, i) => {
               const isSelected = selectedOption === opt;
               const isCorrect = opt === currentQ.correctAnswer;
 
-              let btnStyle = 'bg-white border-stone-200 text-stone-800 hover:border-emerald-500';
+              let btnBg = '#FFFFFF';
+              let btnBorder = 'var(--border-subtle)';
+              let btnColor = 'var(--text-main)';
+
               if (questionAnswered) {
                 if (isCorrect) {
-                  btnStyle = 'bg-emerald-50 border-emerald-500 text-emerald-900 font-bold ring-2 ring-emerald-500/30';
+                  btnBg = 'var(--primary-subtle)';
+                  btnBorder = 'var(--primary)';
+                  btnColor = 'var(--primary)';
                 } else if (isSelected && !isCorrect) {
-                  btnStyle = 'bg-rose-50 border-rose-400 text-rose-900 line-through';
+                  btnBg = '#FFF1F2';
+                  btnBorder = '#F43F5E';
+                  btnColor = '#9F1239';
                 } else {
-                  btnStyle = 'bg-stone-50 border-stone-200 text-stone-600 opacity-60';
+                  btnBg = 'var(--bg-card-inner)';
+                  btnBorder = 'var(--border-subtle)';
+                  btnColor = 'var(--text-muted)';
                 }
               } else if (isSelected) {
-                btnStyle = 'bg-emerald-50 border-emerald-700 text-emerald-900 font-semibold ring-2 ring-emerald-600/30';
+                btnBg = 'var(--primary-subtle)';
+                btnBorder = 'var(--primary)';
+                btnColor = 'var(--primary)';
               }
 
               return (
@@ -351,7 +378,18 @@ export const DiceMemoryGame: React.FC<DiceMemoryGameProps> = ({
                   key={i}
                   onClick={() => handleOptionSelect(opt)}
                   disabled={questionAnswered}
-                  className={`p-4 rounded-2xl border text-sm md:text-base font-medium transition-all shadow-xs cursor-pointer flex items-center justify-center ${btnStyle}`}
+                  style={{
+                    padding: '16px',
+                    borderRadius: 'var(--radius-md)',
+                    border: `1.5px solid ${btnBorder}`,
+                    background: btnBg,
+                    color: btnColor,
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    cursor: questionAnswered ? 'default' : 'pointer',
+                    boxShadow: isSelected ? 'var(--shadow-sm)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
                 >
                   {opt}
                 </button>

@@ -1,0 +1,454 @@
+/* SMRITARA Cognitive Games Centre Styling
+   Warm Ivory & Deep Forest Emerald Design System
+   Pure CSS (No Tailwind dependency)
+*/
+
+.cgc-wrapper {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* 1. Hero Banner */
+.cgc-hero {
+  background: linear-gradient(135deg, #183327 0%, #224738 50%, #175446 100%);
+  border-radius: var(--radius-lg, 16px);
+  padding: 38px 44px;
+  color: #FFFFFF;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(24, 51, 39, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cgc-hero-bg-icon {
+  position: absolute;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.07;
+  pointer-events: none;
+  width: 280px;
+  height: 280px;
+}
+
+.cgc-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 14px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 9999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #D1EBE0;
+  margin-bottom: 14px;
+  letter-spacing: 0.02em;
+}
+
+.cgc-hero-title {
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.22;
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+
+.cgc-hero-desc {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.6;
+  max-width: 660px;
+  margin-bottom: 22px;
+}
+
+.cgc-hero-features {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.cgc-hero-feat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #E2F0EA;
+}
+
+/* 2. Active Game HUD Bar */
+.cgc-hud-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card, #FFFFFF);
+  border: 1px solid var(--border-subtle, #E6E3DA);
+  border-radius: var(--radius-md, 10px);
+  padding: 12px 20px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+}
+
+.cgc-hud-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cgc-hud-title {
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main, #1C221E);
+}
+
+.cgc-hud-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 3. Category Filter Bar */
+.cgc-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle, #E6E3DA);
+  margin-bottom: 8px;
+}
+
+.cgc-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #727F77);
+}
+
+.cgc-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cgc-filter-btn {
+  padding: 7px 16px;
+  border-radius: var(--radius-full, 9999px);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid var(--border-subtle, #E6E3DA);
+  background: var(--bg-card, #FFFFFF);
+  color: var(--text-secondary, #4A5550);
+  font-family: var(--font-body);
+}
+
+.cgc-filter-btn:hover {
+  border-color: var(--primary, #285443);
+  color: var(--text-main, #1C221E);
+  background: var(--bg-card-inner, #F8F7F3);
+}
+
+.cgc-filter-btn.active {
+  background: var(--primary, #285443);
+  color: #FFFFFF;
+  border-color: var(--primary, #285443);
+  box-shadow: 0 2px 6px rgba(40, 84, 67, 0.22);
+}
+
+/* 4. Responsive Game Cards Grid */
+.cgc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 24px;
+}
+
+.cgc-card {
+  background: var(--bg-card, #FFFFFF);
+  border: 1px solid var(--border-subtle, #E6E3DA);
+  border-radius: var(--radius-lg, 16px);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+  position: relative;
+}
+
+.cgc-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--primary-light, #417561);
+  box-shadow: var(--shadow-md);
+}
+
+.cgc-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.cgc-card-badge-box {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-md, 10px);
+  background: var(--bg-card-inner, #F8F7F3);
+  border: 1px solid var(--border-subtle, #E6E3DA);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.cgc-card:hover .cgc-card-badge-box {
+  transform: scale(1.06);
+}
+
+.cgc-card-tags {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.cgc-card-body {
+  margin-bottom: 18px;
+  flex-grow: 1;
+}
+
+.cgc-card-title {
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-main, #1C221E);
+  margin-bottom: 4px;
+  line-height: 1.3;
+  transition: color 0.15s ease;
+}
+
+.cgc-card:hover .cgc-card-title {
+  color: var(--primary, #285443);
+}
+
+.cgc-card-domain {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--primary, #285443);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.cgc-card-desc {
+  font-size: 0.86rem;
+  color: var(--text-secondary, #4A5550);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cgc-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle, #E6E3DA);
+  margin-top: auto;
+}
+
+.cgc-card-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted, #727F77);
+  font-weight: 500;
+}
+
+/* 5. Verified History Section */
+.cgc-history-box {
+  background: var(--bg-card, #FFFFFF);
+  border: 1px solid var(--border-subtle, #E6E3DA);
+  border-radius: var(--radius-lg, 16px);
+  padding: 26px 30px;
+  box-shadow: var(--shadow-sm);
+  margin-top: 10px;
+}
+
+.cgc-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cgc-history-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cgc-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle, #E6E3DA);
+  font-size: 0.86rem;
+}
+
+.cgc-history-row:last-child {
+  border-bottom: none;
+}
+
+/* 6. Modals & Overlays */
+.cgc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(18, 24, 21, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.cgc-modal-card {
+  background: #FFFFFF;
+  border-radius: var(--radius-lg, 16px);
+  padding: 28px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 16px 48px rgba(18, 24, 21, 0.16);
+  border: 1px solid var(--border-subtle, #E6E3DA);
+  text-align: center;
+  animation: riseIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cgc-result-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg-card-inner, #F8F7F3);
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border-subtle, #E6E3DA);
+  margin: 16px 0;
+}
+
+/* 7. Game Specific Container Polish */
+.game-surface-container {
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle, #E6E3DA);
+  border-radius: var(--radius-lg, 16px);
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.game-surface-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle, #E6E3DA);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.game-phase-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full, 9999px);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.game-numpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-width: 260px;
+  margin: 0 auto;
+}
+
+.game-numpad-btn {
+  height: 60px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  border-radius: var(--radius-md, 10px);
+  background: #FFFFFF;
+  border: 1.5px solid var(--border-subtle, #E6E3DA);
+  color: var(--text-main, #1C221E);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading, sans-serif);
+}
+
+.game-numpad-btn:hover {
+  background: var(--bg-card-inner, #F8F7F3);
+  border-color: var(--primary, #285443);
+  color: var(--primary, #285443);
+  transform: translateY(-1px);
+}
+
+.game-numpad-btn:active {
+  transform: scale(0.97);
+}
+
+/* 8. Mobile Responsiveness */
+@media (max-width: 768px) {
+  .cgc-hero {
+    padding: 26px 20px;
+  }
+  .cgc-hero-title {
+    font-size: 1.65rem;
+  }
+  .cgc-hero-bg-icon {
+    display: none;
+  }
+  .cgc-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .cgc-filter-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .game-surface-container {
+    padding: 20px 16px;
+  }
+}

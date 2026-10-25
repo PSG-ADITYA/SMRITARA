@@ -5,6 +5,15 @@ export const config = {
   runtime: 'edge', // Edge runtime for ultra-low latency
 };
 
+function cleanKey(val?: string | null): string {
+  if (!val) return '';
+  let k = val.trim();
+  if ((k.startsWith('"') && k.endsWith('"')) || (k.startsWith("'") && k.endsWith("'"))) {
+    k = k.slice(1, -1).trim();
+  }
+  return k;
+}
+
 export default async function handler(req: Request) {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
@@ -13,12 +22,40 @@ export default async function handler(req: Request) {
     });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  let apiKey = cleanKey(process.env.GEMINI_API_KEY || process.env.GEMINI_KEY || process.env.GOOGLE_API_KEY);
+
+  // In local node execution, attempt reading .env if process.env wasn't pre-populated
+  if (!apiKey && typeof process !== 'undefined' && process.cwd) {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const envPath = path.resolve(process.cwd(), '.env');
+      if (fs.existsSync(envPath)) {
+        const content = fs.readFileSync(envPath, 'utf-8');
+        for (const line of content.split('\n')) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          const eq = trimmed.indexOf('=');
+          if (eq !== -1) {
+            const k = trimmed.slice(0, eq).trim();
+            const v = trimmed.slice(eq + 1).trim();
+            if (k === 'GEMINI_API_KEY' || k === 'GEMINI_KEY' || k === 'GOOGLE_API_KEY') {
+              apiKey = cleanKey(v);
+              if (apiKey) break;
+            }
+          }
+        }
+      }
+    } catch {
+      // Edge runtime doesn't have fs module, which is expected
+    }
+  }
+
   if (!apiKey) {
     return new Response(
       JSON.stringify({
         available: false,
-        error: 'GEMINI_API_KEY is not configured in environment variables.',
+        error: 'GEMINI_API_KEY is not configured in environment variables. Please ensure GEMINI_API_KEY is set in your server environment.',
       }),
       {
         status: 200,
@@ -31,7 +68,7 @@ export default async function handler(req: Request) {
     const body = await req.json();
     const { contents, generationConfig } = body || {};
 
-    const models = ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.1-flash-lite'];
+    const models = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
     let responseData: any = null;
     let responseStatus = 500;
     let lastError: string | null = null;
@@ -55,6 +92,28 @@ export default async function handler(req: Request) {
           responseData = data;
           responseStatus = geminiRes.status;
           break;
+        } else if (geminiRes.status === 400 && data.error?.message?.toLowerCase().includes('key')) {
+          return new Response(
+            JSON.stringify({
+              available: false,
+              error: 'The configured GEMINI_API_KEY was rejected by Google AI. Please verify the key in Google AI Studio.',
+            }),
+            {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
+        } else if (geminiRes.status === 429) {
+          return new Response(
+            JSON.stringify({
+              available: false,
+              error: 'Gemini AI rate limit or quota exceeded. Please wait a moment before sending your next reflection.',
+            }),
+            {
+              status: 429,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
         } else if (data.error) {
           lastError = data.error.message || `Model ${model} error`;
         }

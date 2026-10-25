@@ -169,35 +169,30 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
   }, []);
 
   return (
-    <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-stone-100 max-w-4xl mx-auto">
+    <div className="clean-card" style={{ maxWidth: '860px', margin: '0 auto', background: '#FFFFFF', padding: '32px' }}>
       {/* Header & Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-100 pb-5 mb-6">
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '18px', marginBottom: '24px' }}>
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 bg-amber-50 text-amber-800 text-xs font-semibold rounded-full border border-amber-200">
-              Pattern & Geometry
-            </span>
-            <span className="text-xs text-stone-600">ID: {round.id.slice(-6)}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="badge badge-amber">Pattern & Geometry</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>ID: {round.id.slice(-6)}</span>
           </div>
-          <h2 className="text-2xl font-bold text-stone-800 font-serif mt-1">Sacred Pattern Memory</h2>
-          <p className="text-xs text-stone-600">
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '6px 0 2px 0', color: 'var(--text-main)' }}>Sacred Pattern Memory</h2>
+          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
             Memorize the arrangement of sacred geometry symbols and faithfully reconstruct the grid.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {/* Difficulty Selection */}
-          <div className="flex items-center bg-stone-100 p-1 rounded-xl text-xs font-medium">
+          <div style={{ display: 'flex', background: 'var(--bg-card-inner)', padding: '3px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
             {(['easy', 'medium', 'hard'] as GameDifficulty[]).map(d => (
               <button
                 key={d}
                 onClick={() => handleDifficultyChange(d)}
                 disabled={phase === 'memorize'}
-                className={`px-3 py-1.5 rounded-lg capitalize transition-all ${
-                  difficulty === d
-                    ? 'bg-emerald-800 text-white shadow-sm font-semibold'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
+                className={`btn btn-sm ${difficulty === d ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ textTransform: 'capitalize', padding: '4px 10px', fontSize: '0.76rem' }}
               >
                 {d}
               </button>
@@ -206,16 +201,17 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
 
           <button
             onClick={() => speakGameInstruction('pattern-memory')}
-            className="p-2 text-stone-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-xl transition-colors"
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '6px 10px' }}
             title="Listen to spoken instructions"
           >
-            <Volume2 className="w-5 h-5" />
+            <Volume2 size={16} />
           </button>
 
           {onExit && (
             <button
               onClick={onExit}
-              className="text-xs text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-lg border border-stone-200"
+              className="btn btn-secondary btn-sm"
             >
               Exit
             </button>
@@ -225,28 +221,29 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
 
       {/* PHASE 1: Ready / Introduction */}
       {phase === 'ready' && (
-        <div className="text-center py-10 px-4 space-y-6">
-          <div className="w-20 h-20 bg-emerald-50 rounded-2xl mx-auto flex items-center justify-center border border-emerald-100 shadow-inner">
+        <div style={{ textAlign: 'center', padding: '36px 16px' }}>
+          <div style={{ width: '72px', height: '72px', background: 'var(--primary-subtle)', borderRadius: 'var(--radius-md)', margin: '0 auto 18px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)' }}>
             <PatternSymbolSVG symbolKey="mandala" size={44} color="#285443" />
           </div>
 
-          <div className="max-w-md mx-auto space-y-2">
-            <h3 className="text-xl font-bold text-stone-800 font-serif">Ready to Observe?</h3>
-            <p className="text-sm text-stone-600 leading-relaxed">
+          <div style={{ maxWidth: '480px', margin: '0 auto 24px auto' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>Ready to Observe?</h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
               You will be shown a {round.gridSize}×{round.gridSize} grid containing{' '}
-              <strong className="text-emerald-800 font-semibold">{round.filledCount} sacred symbols</strong> for{' '}
-              <strong className="text-amber-800 font-semibold">{round.memorizeSeconds} seconds</strong>. Pay close
+              <strong style={{ color: 'var(--primary)' }}>{round.filledCount} sacred symbols</strong> for{' '}
+              <strong style={{ color: 'var(--accent-amber)' }}>{round.memorizeSeconds} seconds</strong>. Pay close
               attention to both position and symbol type.
             </p>
           </div>
 
-          <div className="flex justify-center gap-4 pt-2">
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
             <button
               onClick={beginMemorization}
-              className="flex items-center gap-2 px-8 py-3.5 bg-emerald-800 text-white font-semibold rounded-2xl hover:bg-emerald-700 transition-all shadow-md shadow-emerald-900/10 active:scale-95"
+              className="btn btn-primary"
+              style={{ padding: '12px 32px', fontSize: '0.95rem' }}
             >
-              <Play className="w-5 h-5 fill-current" />
-              Begin Memorization ({round.memorizeSeconds}s)
+              <Play size={18} fill="currentColor" />
+              <span>Begin Memorization ({round.memorizeSeconds}s)</span>
             </button>
           </div>
         </div>
@@ -254,40 +251,60 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
 
       {/* PHASE 2: Memorize */}
       {phase === 'memorize' && (
-        <div className="space-y-6 text-center py-4">
-          <div className="flex items-center justify-center gap-2">
-            <Eye className="w-5 h-5 text-amber-800 animate-pulse" />
-            <span className="text-sm font-semibold text-amber-800">Memorize Pattern: {timeLeft}s remaining</span>
+        <div style={{ textAlign: 'center', padding: '16px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '14px' }}>
+            <Eye size={18} color="var(--accent-amber)" />
+            <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--accent-amber)' }}>
+              Memorize Pattern: {timeLeft}s remaining
+            </span>
           </div>
 
           {/* Progress Bar */}
-          <div className="w-64 h-2 bg-stone-100 rounded-full mx-auto overflow-hidden">
+          <div style={{ width: '260px', height: '6px', background: 'var(--bg-card-inner)', borderRadius: '9999px', margin: '0 auto 24px auto', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
             <div
-              className="h-full bg-amber-500 transition-all duration-1000 ease-linear rounded-full"
-              style={{ width: `${(timeLeft / round.memorizeSeconds) * 100}%` }}
+              style={{
+                height: '100%',
+                background: 'var(--accent-amber)',
+                transition: 'width 1s linear',
+                width: `${(timeLeft / round.memorizeSeconds) * 100}%`
+              }}
             />
           </div>
 
           {/* Grid Display */}
           <div
-            className="grid gap-3 p-4 bg-stone-50 rounded-3xl border border-stone-200 mx-auto w-fit shadow-inner"
             style={{
-              gridTemplateColumns: `repeat(${round.gridSize}, minmax(0, 1fr))`,
+              display: 'grid',
+              gap: '12px',
+              padding: '18px',
+              background: 'var(--bg-card-inner)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-subtle)',
+              margin: '0 auto',
+              width: 'fit-content',
+              gridTemplateColumns: `repeat(${round.gridSize}, minmax(0, 1fr))`
             }}
           >
             {round.patternCells.map(cell => (
               <div
                 key={cell.cellIndex}
-                className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl flex items-center justify-center transition-all ${
-                  cell.symbol
-                    ? 'bg-white shadow-md border-2 border-emerald-700/30 ring-2 ring-emerald-500/10'
-                    : 'bg-stone-100/60 border border-stone-200/50'
-                }`}
+                style={{
+                  width: '84px',
+                  height: '84px',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: cell.symbol ? '#FFFFFF' : 'rgba(255, 255, 255, 0.4)',
+                  border: `2px solid ${cell.symbol ? 'var(--primary-light)' : 'var(--border-subtle)'}`,
+                  boxShadow: cell.symbol ? 'var(--shadow-sm)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
               >
                 {cell.symbol && (
-                  <div className="flex flex-col items-center gap-1">
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                     <PatternSymbolSVG symbolKey={cell.symbol} size={42} color={cell.color} />
-                    <span className="text-[10px] font-medium text-stone-600">
+                    <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
                       {PATTERN_SYMBOLS_CATALOGUE[cell.symbol].name}
                     </span>
                   </div>
@@ -300,17 +317,17 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
 
       {/* PHASE 3: Reconstruct */}
       {phase === 'reconstruct' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between bg-stone-50 p-3.5 rounded-2xl border border-stone-200">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-card-inner)', padding: '12px 18px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
             <div>
-              <p className="text-xs font-semibold text-stone-700">Reconstruction Phase</p>
-              <p className="text-[11px] text-stone-600">
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>Reconstruction Phase</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                 Select a symbol from the palette below, then tap a cell to place it. Tap again to clear.
-              </p>
+              </div>
             </div>
             <button
               onClick={clearGrid}
-              className="text-xs text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-lg border border-stone-200 bg-white"
+              className="btn btn-secondary btn-sm"
             >
               Clear Grid
             </button>
@@ -318,9 +335,16 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
 
           {/* Interactive Reconstructable Grid */}
           <div
-            className="grid gap-3 p-4 bg-stone-50 rounded-3xl border border-stone-200 mx-auto w-fit shadow-inner"
             style={{
-              gridTemplateColumns: `repeat(${round.gridSize}, minmax(0, 1fr))`,
+              display: 'grid',
+              gap: '12px',
+              padding: '18px',
+              background: 'var(--bg-card-inner)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-subtle)',
+              margin: '0 auto',
+              width: 'fit-content',
+              gridTemplateColumns: `repeat(${round.gridSize}, minmax(0, 1fr))`
             }}
           >
             {Array.from({ length: round.gridSize * round.gridSize }).map((_, idx) => {
@@ -329,21 +353,30 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
                 <button
                   key={idx}
                   onClick={() => handleCellClick(idx)}
-                  className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
-                    placedSymbol
-                      ? 'bg-white shadow-md border-2 border-emerald-600 ring-2 ring-emerald-500/20'
-                      : 'bg-white hover:bg-stone-100/80 border border-dashed border-stone-300'
-                  }`}
+                  style={{
+                    width: '84px',
+                    height: '84px',
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: '#FFFFFF',
+                    border: `2px ${placedSymbol ? 'solid var(--primary)' : 'dashed var(--border-medium)'}`,
+                    boxShadow: placedSymbol ? 'var(--shadow-sm)' : 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
                 >
                   {placedSymbol ? (
                     <>
-                      <PatternSymbolSVG symbolKey={placedSymbol} size={40} />
-                      <span className="text-[10px] font-medium text-stone-600 mt-1">
+                      <PatternSymbolSVG symbolKey={placedSymbol} size={38} />
+                      <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-secondary)', marginTop: '2px' }}>
                         {PATTERN_SYMBOLS_CATALOGUE[placedSymbol].name}
                       </span>
                     </>
                   ) : (
-                    <span className="text-xs text-stone-300 font-mono">#{idx + 1}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>#{idx + 1}</span>
                   )}
                 </button>
               );
@@ -351,11 +384,11 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
           </div>
 
           {/* Palette Selector */}
-          <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 max-w-xl mx-auto space-y-3">
-            <span className="text-xs font-semibold text-emerald-900 block text-center">
+          <div style={{ padding: '16px', background: 'var(--primary-subtle)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(40, 84, 67, 0.15)', maxWidth: '580px', margin: '0 auto', width: '100%' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', display: 'block', textAlign: 'center', marginBottom: '12px' }}>
               Active Symbol Palette (Select to Stamp)
             </span>
-            <div className="flex flex-wrap items-center justify-center gap-3">
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
               {round.paletteSymbols.map(sym => {
                 const isSelected = selectedPaletteSymbol === sym;
                 const info = PATTERN_SYMBOLS_CATALOGUE[sym];
@@ -363,14 +396,23 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
                   <button
                     key={sym}
                     onClick={() => setSelectedPaletteSymbol(sym)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all border ${
-                      isSelected
-                        ? 'bg-white shadow-md border-emerald-600 ring-2 ring-emerald-500/30 scale-105'
-                        : 'bg-white/80 border-stone-200 hover:bg-white text-stone-600'
-                    }`}
+                    className="btn btn-sm"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 14px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: isSelected ? 'var(--primary)' : '#FFFFFF',
+                      color: isSelected ? '#FFFFFF' : 'var(--text-main)',
+                      border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border-subtle)'}`,
+                      cursor: 'pointer',
+                      transform: isSelected ? 'scale(1.05)' : 'none',
+                      boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
+                    }}
                   >
-                    <PatternSymbolSVG symbolKey={sym} size={24} color={info.defaultColor} />
-                    <span className="text-xs font-medium text-stone-700">{info.name}</span>
+                    <PatternSymbolSVG symbolKey={sym} size={22} color={isSelected ? '#FFFFFF' : info.defaultColor} />
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>{info.name}</span>
                   </button>
                 );
               })}
@@ -378,13 +420,14 @@ export const PatternMemoryGame: React.FC<PatternMemoryGameProps> = ({
           </div>
 
           {/* Submit Action */}
-          <div className="flex justify-center pt-2">
+          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '8px' }}>
             <button
               onClick={handleSubmitReconstruction}
-              className="flex items-center gap-2 px-8 py-3.5 bg-emerald-800 text-white font-semibold rounded-2xl hover:bg-emerald-700 transition-all shadow-md shadow-emerald-900/10 active:scale-95"
+              className="btn btn-primary"
+              style={{ padding: '12px 32px', fontSize: '0.95rem' }}
             >
-              Verify Reconstruction
-              <ArrowRight className="w-4 h-4" />
+              <span>Verify Reconstruction</span>
+              <ArrowRight size={16} />
             </button>
           </div>
         </div>

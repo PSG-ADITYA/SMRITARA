@@ -173,62 +173,55 @@ export const NumberSequenceGame: React.FC<NumberSequenceGameProps> = ({
   }, []);
 
   return (
-    <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-stone-100 max-w-4xl mx-auto">
+    <div className="clean-card" style={{ maxWidth: '860px', margin: '0 auto', background: '#FFFFFF', padding: '32px' }}>
       {/* Header & Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-100 pb-5 mb-6">
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '18px', marginBottom: '24px' }}>
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 bg-amber-50 text-amber-800 text-xs font-semibold rounded-full border border-amber-200">
-              Working Memory Span
-            </span>
-            <span className="text-xs text-stone-600">ID: {round.id.slice(-6)}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="badge badge-amber">Working Memory Span</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>ID: {round.id.slice(-6)}</span>
           </div>
-          <h2 className="text-2xl font-bold text-stone-800 font-serif mt-1">
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '6px 0 2px 0', color: 'var(--text-main)' }}>
             {mode === 'reverse' ? 'Reverse Digit Recall' : 'Number Sequence Memory'}
           </h2>
-          <p className="text-xs text-stone-600">
+          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
             {mode === 'reverse'
               ? 'Observe the flashed digit sequence, then reconstruct it in reverse order.'
               : 'Observe the flashed digit sequence, then reproduce it in forward order.'}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {/* Mode Switcher */}
-          <div className="flex items-center bg-stone-100 p-1 rounded-xl text-xs font-medium">
+          <div style={{ display: 'flex', background: 'var(--bg-card-inner)', padding: '3px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
             <button
               onClick={() => handleModeChange('forward')}
               disabled={phase === 'flashing'}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                mode === 'forward' ? 'bg-white text-stone-800 shadow-xs font-semibold' : 'text-stone-600'
-              }`}
+              className={`btn btn-sm ${mode === 'forward' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ padding: '4px 10px', fontSize: '0.76rem' }}
             >
               Forward
             </button>
             <button
               onClick={() => handleModeChange('reverse')}
               disabled={phase === 'flashing'}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
-                mode === 'reverse' ? 'bg-emerald-800 text-white shadow-xs font-semibold' : 'text-stone-600'
-              }`}
+              className={`btn btn-sm ${mode === 'reverse' ? 'btn-teal' : 'btn-secondary'}`}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', fontSize: '0.76rem' }}
             >
-              <ArrowLeftRight className="w-3 h-3" />
-              Reverse
+              <ArrowLeftRight size={12} />
+              <span>Reverse</span>
             </button>
           </div>
 
           {/* Difficulty */}
-          <div className="flex items-center bg-stone-100 p-1 rounded-xl text-xs font-medium">
+          <div style={{ display: 'flex', background: 'var(--bg-card-inner)', padding: '3px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
             {(['easy', 'medium', 'hard'] as GameDifficulty[]).map(d => (
               <button
                 key={d}
                 onClick={() => handleDifficultyChange(d)}
                 disabled={phase === 'flashing'}
-                className={`px-3 py-1.5 rounded-lg capitalize transition-all ${
-                  difficulty === d
-                    ? 'bg-emerald-800 text-white shadow-sm font-semibold'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
+                className={`btn btn-sm ${difficulty === d ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ textTransform: 'capitalize', padding: '4px 10px', fontSize: '0.76rem' }}
               >
                 {d}
               </button>
@@ -237,16 +230,17 @@ export const NumberSequenceGame: React.FC<NumberSequenceGameProps> = ({
 
           <button
             onClick={() => speakGameInstruction('number-sequence')}
-            className="p-2 text-stone-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-xl transition-colors"
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '6px 10px' }}
             title="Listen to spoken instructions"
           >
-            <Volume2 className="w-5 h-5" />
+            <Volume2 size={16} />
           </button>
 
           {onExit && (
             <button
               onClick={onExit}
-              className="text-xs text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-lg border border-stone-200"
+              className="btn btn-secondary btn-sm"
             >
               Exit
             </button>
@@ -256,32 +250,33 @@ export const NumberSequenceGame: React.FC<NumberSequenceGameProps> = ({
 
       {/* PHASE 1: Ready */}
       {phase === 'ready' && (
-        <div className="text-center py-10 px-4 space-y-6">
-          <div className="w-20 h-20 bg-amber-50 rounded-3xl mx-auto flex items-center justify-center border border-amber-200/60 shadow-inner">
-            <span className="text-3xl font-bold font-mono text-amber-900">7 • 2</span>
+        <div style={{ textAlign: 'center', padding: '36px 16px' }}>
+          <div style={{ width: '72px', height: '72px', background: 'var(--accent-amber-subtle)', borderRadius: 'var(--radius-md)', margin: '0 auto 18px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)' }}>
+            <span style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)' }}>7 • 2</span>
           </div>
 
-          <div className="max-w-md mx-auto space-y-2">
-            <h3 className="text-xl font-bold text-stone-800 font-serif">
+          <div style={{ maxWidth: '480px', margin: '0 auto 24px auto' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>
               {mode === 'reverse' ? 'Reverse Working Memory Span' : 'Forward Digit Span'}
             </h3>
-            <p className="text-sm text-stone-600 leading-relaxed">
-              You will see <strong className="text-emerald-800 font-semibold">{round.length} numbers</strong> flash one by
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+              You will see <strong style={{ color: 'var(--primary)' }}>{round.length} numbers</strong> flash one by
               one. Once finished, enter them{' '}
-              <strong className="text-amber-800 font-semibold">
+              <strong style={{ color: 'var(--accent-amber)' }}>
                 {mode === 'reverse' ? 'in REVERSE order' : 'in the original order'}
               </strong>
               .
             </p>
           </div>
 
-          <div className="flex justify-center gap-4 pt-2">
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
             <button
               onClick={beginFlashing}
-              className="flex items-center gap-2 px-8 py-3.5 bg-emerald-800 text-white font-semibold rounded-2xl hover:bg-emerald-700 transition-all shadow-md shadow-emerald-900/10 active:scale-95"
+              className="btn btn-primary"
+              style={{ padding: '12px 32px', fontSize: '0.95rem' }}
             >
-              <Play className="w-5 h-5 fill-current" />
-              Start Digit Stream ({round.length} Digits)
+              <Play size={18} fill="currentColor" />
+              <span>Start Digit Stream ({round.length} Digits)</span>
             </button>
           </div>
         </div>
@@ -289,33 +284,38 @@ export const NumberSequenceGame: React.FC<NumberSequenceGameProps> = ({
 
       {/* PHASE 2: Flashing */}
       {phase === 'flashing' && (
-        <div className="text-center py-12 space-y-6">
-          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-amber-800">
-            <Eye className="w-4 h-4 animate-pulse" />
+        <div style={{ textAlign: 'center', padding: '24px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '20px', fontSize: '0.88rem', fontWeight: 700, color: 'var(--accent-amber)' }}>
+            <Eye size={18} />
             <span>Focus Attention: Flashing Sequence</span>
           </div>
 
-          <div className="h-40 flex items-center justify-center">
+          <div style={{ height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {activeDigitIndex >= 0 ? (
-              <div className="w-28 h-28 bg-emerald-800 text-white rounded-3xl flex items-center justify-center shadow-xl shadow-emerald-900/20 text-6xl font-bold font-mono animate-scaleIn">
+              <div style={{ width: '100px', height: '100px', background: 'var(--primary)', color: '#FFFFFF', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3.5rem', fontWeight: 800, fontFamily: 'var(--font-mono)', boxShadow: 'var(--shadow-lg)' }}>
                 {round.digits[activeDigitIndex]}
               </div>
             ) : (
-              <div className="w-16 h-16 rounded-full border-4 border-dashed border-stone-200 flex items-center justify-center animate-spin" />
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: '4px dashed var(--border-medium)', animation: 'spin 1s linear infinite' }} />
             )}
           </div>
 
-          <div className="flex justify-center gap-2">
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '16px' }}>
             {round.digits.map((_, i) => (
               <div
                 key={i}
-                className={`w-3 h-3 rounded-full transition-colors ${
-                  i === activeDigitIndex
-                    ? 'bg-emerald-700 scale-125'
+                style={{
+                  width: '10px',
+                  height: '10px',
+                  borderRadius: '50%',
+                  background: i === activeDigitIndex
+                    ? 'var(--primary)'
                     : i < activeDigitIndex
-                    ? 'bg-emerald-200'
-                    : 'bg-stone-200'
-                }`}
+                    ? 'var(--primary-light)'
+                    : 'var(--border-subtle)',
+                  transform: i === activeDigitIndex ? 'scale(1.3)' : 'scale(1)',
+                  transition: 'all 0.2s ease'
+                }}
               />
             ))}
           </div>
@@ -324,29 +324,42 @@ export const NumberSequenceGame: React.FC<NumberSequenceGameProps> = ({
 
       {/* PHASE 3: Input */}
       {phase === 'input' && (
-        <div className="space-y-6 max-w-md mx-auto py-2">
-          <div className="text-center space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-stone-600">
+        <div style={{ maxWidth: '420px', margin: '0 auto', padding: '8px 0', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-main)', marginBottom: '4px' }}>
               {mode === 'reverse' ? 'Enter Digits in REVERSE Order' : 'Enter Digits in FORWARD Order'}
             </p>
-            <p className="text-[11px] text-stone-600">Use on-screen numpad or your keyboard (1–9, Backspace, Enter)</p>
+            <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', margin: 0 }}>Use on-screen numpad or your keyboard (1–9, Backspace, Enter)</p>
           </div>
 
           {/* Sequence Slots */}
-          <div className="flex justify-center gap-2.5 p-4 bg-stone-50 rounded-2xl border border-stone-200">
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', padding: '16px', background: 'var(--bg-card-inner)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
             {Array.from({ length: round.length }).map((_, idx) => {
               const entered = userDigits[idx];
               const isCurrentSlot = idx === userDigits.length;
               return (
                 <div
                   key={idx}
-                  className={`w-12 h-14 rounded-xl flex items-center justify-center font-mono font-bold text-xl border transition-all ${
-                    entered !== undefined
-                      ? 'bg-white border-emerald-600 text-emerald-900 shadow-xs'
-                      : isCurrentSlot
-                      ? 'bg-white border-amber-500 ring-2 ring-amber-400/30'
-                      : 'bg-stone-100/70 border-stone-200 text-stone-300'
-                  }`}
+                  style={{
+                    width: '44px',
+                    height: '52px',
+                    borderRadius: 'var(--radius-sm)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 800,
+                    fontSize: '1.25rem',
+                    background: '#FFFFFF',
+                    border: `2px solid ${
+                      entered !== undefined
+                        ? 'var(--primary)'
+                        : isCurrentSlot
+                        ? 'var(--accent-amber)'
+                        : 'var(--border-subtle)'
+                    }`,
+                    color: entered !== undefined ? 'var(--primary)' : 'var(--text-muted)'
+                  }}
                 >
                   {entered !== undefined ? entered : '—'}
                 </div>
@@ -355,36 +368,58 @@ export const NumberSequenceGame: React.FC<NumberSequenceGameProps> = ({
           </div>
 
           {/* Virtual Numpad */}
-          <div className="grid grid-cols-3 gap-2.5">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
               <button
                 key={num}
                 onClick={() => handleNumpadPress(num)}
                 disabled={userDigits.length >= round.length}
-                className="p-4 bg-white hover:bg-stone-50 active:bg-stone-100 text-stone-800 text-xl font-bold font-mono rounded-2xl border border-stone-200 shadow-xs transition-all disabled:opacity-40 cursor-pointer"
+                style={{
+                  height: '56px',
+                  background: '#FFFFFF',
+                  color: 'var(--text-main)',
+                  fontSize: '1.3rem',
+                  fontWeight: 700,
+                  fontFamily: 'var(--font-mono)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1.5px solid var(--border-subtle)',
+                  boxShadow: 'var(--shadow-sm)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
               >
                 {num}
               </button>
             ))}
             <button
               onClick={() => setUserDigits([])}
-              className="p-4 bg-stone-50 hover:bg-stone-100 text-stone-600 text-xs font-semibold rounded-2xl border border-stone-200 transition-all cursor-pointer"
+              className="btn btn-secondary"
+              style={{ height: '56px', fontSize: '0.82rem', fontWeight: 600 }}
             >
               Clear
             </button>
             <button
               onClick={() => handleNumpadPress(0)}
               disabled
-              className="p-4 bg-stone-100/40 text-stone-300 text-xs font-semibold rounded-2xl border border-stone-100"
+              style={{
+                height: '56px',
+                background: 'var(--bg-card-inner)',
+                color: 'var(--text-muted)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-subtle)',
+                fontSize: '0.8rem'
+              }}
             >
               —
             </button>
             <button
               onClick={handleBackspace}
               disabled={userDigits.length === 0}
-              className="p-4 bg-stone-50 hover:bg-stone-100 text-stone-700 flex items-center justify-center rounded-2xl border border-stone-200 transition-all disabled:opacity-40 cursor-pointer"
+              className="btn btn-secondary"
+              style={{ height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Delete last digit"
             >
-              <Delete className="w-5 h-5" />
+              <Delete size={18} />
             </button>
           </div>
 

@@ -278,11 +278,12 @@ export const MemoryGymView: React.FC = () => {
 
   if (viewMode === 'centre') {
     return (
-      <div className="space-y-4">
-        <div className="flex justify-end px-2">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 4px' }}>
           <button
             onClick={() => setViewMode('quick_drills')}
-            className="text-xs text-stone-500 hover:text-emerald-800 transition-colors py-1 px-3 rounded-lg border border-stone-200 bg-white shadow-xs"
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: '0.78rem' }}
           >
             Classic Matrix & Sound Drills →
           </button>
