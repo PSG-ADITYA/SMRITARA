@@ -13,6 +13,7 @@ import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
 import { audioService } from '../../engine/audioService';
 import type { MemoryGameType } from '../../types';
+import { CognitiveGamesCenter } from '../games/CognitiveGamesCenter';
 
 // Cultural and philosophical passages for verbal memory
 const CULTURAL_PASSAGES = [
@@ -54,6 +55,7 @@ const CULTURAL_PASSAGES = [
 export const MemoryGymView: React.FC = () => {
   const { recordMemorySession, memorySessions, soundEnabled, celebrationsEnabled } = useApp();
 
+  const [viewMode, setViewMode] = useState<'centre' | 'quick_drills'>('centre');
   const [activeGame, setActiveGame] = useState<MemoryGameType>('matrix');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [gameState, setGameState] = useState<'idle' | 'memorize' | 'recall' | 'result'>('idle');
@@ -274,8 +276,33 @@ export const MemoryGymView: React.FC = () => {
     });
   };
 
+  if (viewMode === 'centre') {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-end px-2">
+          <button
+            onClick={() => setViewMode('quick_drills')}
+            className="text-xs text-stone-500 hover:text-emerald-800 transition-colors py-1 px-3 rounded-lg border border-stone-200 bg-white shadow-xs"
+          >
+            Classic Matrix & Sound Drills →
+          </button>
+        </div>
+        <CognitiveGamesCenter />
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: '880px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="flex justify-start">
+        <button
+          onClick={() => setViewMode('centre')}
+          className="text-xs text-emerald-800 font-semibold hover:underline flex items-center gap-1"
+        >
+          ← Back to Cognitive Games Centre
+        </button>
+      </div>
+
       {/* Disclaimer Alert */}
       <div className="clean-card" style={{
         display: 'flex',

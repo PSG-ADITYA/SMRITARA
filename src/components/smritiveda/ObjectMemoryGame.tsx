@@ -4,6 +4,7 @@ import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
 import { OBJECT_MEMORY_ITEMS } from '../../data/culturalContent';
 import { soundEngine } from '../../engine/audioEngine';
+import { MemoryObjectSVG } from '../common/icons/MemoryObjectIcons';
 
 export const ObjectMemoryGame: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   const { recordMemorySession } = useApp();
@@ -179,7 +180,9 @@ export const ObjectMemoryGame: React.FC<{ onComplete?: () => void }> = ({ onComp
                   animation: 'fadeIn 0.3s'
                 }}
               >
-                <div style={{ fontSize: '2.4rem', marginBottom: '6px' }}>{item.icon}</div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                  <MemoryObjectSVG objectKey={item.id} size={44} />
+                </div>
                 <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff' }}>{item.label}</div>
               </div>
             ))}
@@ -227,7 +230,9 @@ export const ObjectMemoryGame: React.FC<{ onComplete?: () => void }> = ({ onComp
                     transition: 'all 0.15s'
                   }}
                 >
-                  <div style={{ fontSize: '2rem', marginBottom: '4px' }}>{item.icon}</div>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
+                    <MemoryObjectSVG objectKey={item.id} size={38} />
+                  </div>
                   <div style={{ fontSize: '0.82rem', fontWeight: 600, color: isSelected ? '#34d399' : 'var(--text-main)' }}>
                     {item.label}
                   </div>

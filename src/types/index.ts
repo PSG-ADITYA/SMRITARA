@@ -57,7 +57,21 @@ export interface FocusSession {
   timestamp: string;
 }
 
-export type MemoryGameType = 'sequence' | 'matrix' | 'passages' | 'pairs' | 'object_memory' | 'attention';
+export type MemoryGameType =
+  | 'sequence'
+  | 'matrix'
+  | 'passages'
+  | 'pairs'
+  | 'object_memory'
+  | 'attention'
+  | 'fruit-path'
+  | 'fruit_path'
+  | 'memory-melody'
+  | 'memory_melody'
+  | 'pattern-memory'
+  | 'dice-memory'
+  | 'number-sequence';
+
 
 export interface MemorySession {
   id: string;

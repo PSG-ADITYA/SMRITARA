@@ -365,7 +365,7 @@ ${actionItems.map((item, idx) => `${idx + 1}. **${item.split(':')[0]}:** ${item.
 export async function sendWeeklyReportEmail(
   report: WeeklyProgressReport,
   overrideEmail?: string
-): Promise<{ success: boolean; message: string; receiptId?: string }> {
+): Promise<{ success: boolean; message: string; receiptId?: string; smtpConfigured?: boolean }> {
   const recipient = (overrideEmail || report.recipientEmail).trim().toLowerCase();
   
   if (!recipient || !recipient.includes('@')) {
@@ -379,6 +379,7 @@ export async function sendWeeklyReportEmail(
       body: JSON.stringify({
         email: recipient,
         clientName: report.metrics.clientName,
+        subject: `SMRITARA Weekly Progress Report — ${report.metrics.weekLabel}`,
         report: {
           id: report.id,
           weekLabel: report.metrics.weekLabel,
@@ -387,6 +388,7 @@ export async function sendWeeklyReportEmail(
           totalMinutes: report.metrics.totalPracticeMinutes,
           summary: report.metrics.executiveSummary
         },
+        markdown: report.markdownContent,
         html: report.htmlContent
       })
     });
@@ -398,43 +400,61 @@ export async function sendWeeklyReportEmail(
       data = {};
     }
 
-    const receiptId = data.deliveryId || `receipt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    if (res.ok && data.success) {
+      const receiptId = data.deliveryId || `receipt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      // Archive into local history
+      archiveDispatchedReport({
+        id: report.id,
+        weekLabel: report.metrics.weekLabel,
+        recipientEmail: recipient,
+        sentAt: new Date().toISOString(),
+        averageScore: report.metrics.averageDisciplineScore,
+        totalMinutes: report.metrics.totalPracticeMinutes,
+        deliveryStatus: 'sent'
+      });
 
-    // Archive into local history
-    archiveDispatchedReport({
-      id: report.id,
-      weekLabel: report.metrics.weekLabel,
-      recipientEmail: recipient,
-      sentAt: new Date().toISOString(),
-      averageScore: report.metrics.averageDisciplineScore,
-      totalMinutes: report.metrics.totalPracticeMinutes,
-      deliveryStatus: res.ok ? 'sent' : 'local_archive'
-    });
-
+      return {
+        success: true,
+        receiptId,
+        message: data.message || `Weekly report successfully emailed to ${recipient}`
+      };
+    } else {
+      return {
+        success: false,
+        smtpConfigured: data.smtpConfigured ?? false,
+        receiptId: '',
+        message: data.message || data.error || 'SMTP delivery failed. Click 1-Click Gmail Send to dispatch immediately from your email client.'
+      };
+    }
+  } catch (err: any) {
     return {
-      success: true,
-      receiptId,
-      message: `Weekly report successfully emailed to ${recipient} (Receipt: ${receiptId.substring(0, 16)}...)`
-    };
-  } catch {
-    // Offline / client-side graceful delivery fallback
-    const fallbackReceipt = `local_delivered_${Date.now()}`;
-    archiveDispatchedReport({
-      id: report.id,
-      weekLabel: report.metrics.weekLabel,
-      recipientEmail: recipient,
-      sentAt: new Date().toISOString(),
-      averageScore: report.metrics.averageDisciplineScore,
-      totalMinutes: report.metrics.totalPracticeMinutes,
-      deliveryStatus: 'local_archive'
-    });
-
-    return {
-      success: true,
-      receiptId: fallbackReceipt,
-      message: `Weekly report generated and saved for client email: ${recipient} (Offline/Local delivery simulated)`
+      success: false,
+      smtpConfigured: false,
+      receiptId: '',
+      message: err.message || 'Network error communicating with report email server. You can dispatch directly via 1-Click Gmail.'
     };
   }
+}
+
+/**
+ * Direct 1-Click Gmail dispatch URL generator
+ * Opens mail.google.com in browser with pre-filled recipient, subject, and markdown report content.
+ */
+export function getGmailComposeUrl(recipientEmail: string, report: WeeklyProgressReport): string {
+  const subject = `SMRITARA Weekly Progress Report — ${report.metrics.weekLabel}`;
+  const body = report.markdownContent;
+  return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+/**
+ * Standard mailto: URI fallback for native email clients (Apple Mail, Thunderbird, Outlook)
+ */
+export function getMailtoUrl(recipientEmail: string, report: WeeklyProgressReport): string {
+  const subject = `SMRITARA Weekly Progress Report — ${report.metrics.weekLabel}`;
+  const body = report.markdownContent.length > 1800 
+    ? report.markdownContent.substring(0, 1800) + '\n\n...[Full report available in SMRITARA platform]'
+    : report.markdownContent;
+  return `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 /**

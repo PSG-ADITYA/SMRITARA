@@ -13,10 +13,13 @@ import { ProgressView } from './components/progress/ProgressView';
 import { AICoachView } from './components/aicoach/AICoachView';
 import { SettingsView } from './components/settings/SettingsView';
 import { DailyLogModal } from './components/discipline/DailyLogModal';
+import { SpokenGuideBar } from './components/guide/SpokenGuideBar';
+import { GuidedTourModal } from './components/guide/GuidedTourModal';
 
 const AppContent: React.FC = () => {
   const { user, isAuthenticated, isDemoMode, isOnboarding, activeTab } = useApp();
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
 
   // If user is not signed in and not exploring demo, show Welcome screen
   if (!isAuthenticated && !isOnboarding) {
@@ -107,6 +110,15 @@ const AppContent: React.FC = () => {
         <DailyLogModal
           isOpen={isLogModalOpen}
           onClose={() => setIsLogModalOpen(false)}
+        />
+
+        {/* Spoken AI Website Guide & Captions */}
+        <SpokenGuideBar onStartTour={() => setIsTourOpen(true)} />
+
+        {/* First-Run Interactive Guided Tour Modal */}
+        <GuidedTourModal
+          isOpen={isTourOpen}
+          onClose={() => setIsTourOpen(false)}
         />
       </main>
     </div>

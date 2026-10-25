@@ -127,6 +127,12 @@ export const AICoachView: React.FC = () => {
     'Recommend a gentle mindfulness or breathing exercise for stress relief.'
   ];
 
+  const handleClearHistory = () => {
+    if (window.confirm('Clear AI Life Coach conversation history? This will remove previous messages and start a fresh session with your grounded coach.')) {
+      clearCoachChat();
+    }
+  };
+
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto' }}>
       {/* Privacy & Grounding Header Banner */}
@@ -167,13 +173,13 @@ export const AICoachView: React.FC = () => {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button
-            onClick={clearCoachChat}
+            onClick={handleClearHistory}
             className="btn btn-secondary btn-sm"
             style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-            title="Start fresh conversation"
+            title="Clear conversation history and start fresh"
           >
             <RotateCcw size={13} />
-            <span>Reset Chat</span>
+            <span>Clear History</span>
           </button>
         </div>
       </div>

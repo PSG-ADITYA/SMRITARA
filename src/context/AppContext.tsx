@@ -150,7 +150,7 @@ interface AppContextType {
   weeklyReportsEnabled: boolean;
   setWeeklyReportsEnabled: (enabled: boolean) => void;
   reportHistory: ReportHistoryItem[];
-  generateAndEmailReport: (targetEmail?: string) => Promise<{ success: boolean; message: string; receiptId?: string; report?: WeeklyProgressReport }>;
+  generateAndEmailReport: (targetEmail?: string) => Promise<{ success: boolean; message: string; receiptId?: string; report?: WeeklyProgressReport; smtpConfigured?: boolean }>;
 }
 
 const STORAGE_ACCOUNTS_KEY = 'smritara_accounts_v2';
@@ -217,6 +217,14 @@ const DEFAULT_HABITS: Habit[] = [
   { id: 'h5', name: 'Social Media Doomscrolling', type: 'bad', category: 'Focus', streak: 2, createdAt: new Date().toISOString() },
   { id: 'h6', name: 'Late Night Screen Blue Light', type: 'bad', category: 'Sleep', streak: 4, createdAt: new Date().toISOString() },
 ];
+
+// Helper to generate reliable default welcome greeting for AI Life Coach
+export const createDefaultWelcomeMessage = (name?: string): ChatMessage => ({
+  id: 'welcome_' + Date.now(),
+  sender: 'coach',
+  text: `Welcome to **SMRITARA**, ${name || 'Voyager'}. I am your grounded AI Life Coach.\n\nI connect your daily practice, cognitive memory gym, and mindful reflections using your actual stored records. Ask me any question about routines, focus sessions, or memory drills.`,
+  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+});
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -355,14 +363,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [todaySchedule, setTodaySchedule] = useState<DailyScheduleBlock[]>(() =>
     loadScoped('todaySchedule', generateScheduleForChronotype('bear'))
   );
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => loadScoped('chatMessages', [
-    {
-      id: 'welcome_msg',
-      sender: 'coach',
-      text: `Welcome to **SMRITARA**. I am your grounded AI Life Coach.\n\nI connect your daily practice, cognitive memory gym, and mindful reflections using your actual stored records. Ask me any question about routines, focus sessions, or memory drills.`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-  ]));
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
+    const loaded = loadScoped<ChatMessage[]>('chatMessages', []);
+    return (Array.isArray(loaded) && loaded.length > 0) ? loaded : [createDefaultWelcomeMessage(currentUser?.name)];
+  });
 
   // Auto-sync state changes to scoped storage
   useEffect(() => {
@@ -452,7 +456,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const generateAndEmailReport = async (
     targetEmail?: string
-  ): Promise<{ success: boolean; message: string; receiptId?: string; report?: WeeklyProgressReport }> => {
+  ): Promise<{ success: boolean; message: string; receiptId?: string; report?: WeeklyProgressReport; smtpConfigured?: boolean }> => {
     const report = generateWeeklyReport(user, dailyLogs, practiceSessions, habits);
     const result = await sendWeeklyReportEmail(report, targetEmail || user.email);
     setReportHistory(getReportHistory());
@@ -536,7 +540,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const lTips = localStorage.getItem(prefix + 'savedTipIds');
     setSavedTipIds(lTips ? JSON.parse(lTips) : []);
     const lChat = localStorage.getItem(prefix + 'chatMessages');
-    setChatMessages(lChat ? JSON.parse(lChat) : []);
+    let loadedChat: ChatMessage[] = [];
+    try {
+      loadedChat = lChat ? JSON.parse(lChat) : [];
+    } catch {
+      loadedChat = [];
+    }
+    if (!Array.isArray(loadedChat) || loadedChat.length === 0) {
+      loadedChat = [createDefaultWelcomeMessage(acctName)];
+    }
+    setChatMessages(loadedChat);
   };
 
   // Helper to load all user data from Supabase Cloud
@@ -678,15 +691,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsOnboarding(true);
         localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(newAcct));
 
-        if (practiceSessions.length > 0 || dailyLogs.length > 0) {
-          migrateLocalDataToCloud(cloudRes.user.id, {
-            profile: user,
-            practiceSessions,
-            dailyLogs,
-            habits,
-            savedTips: savedTipIds
-          }).catch(console.warn);
-        }
+        // CRITICAL FOR BEGINNER ACCOUNT:
+        // A newly registered beginner account MUST start at strictly 0 practice points!
+        // Clear all prior in-memory guest/demo data so no points or sessions leak.
+        clearInMemoryUserData();
+        const prefix = `smritara_u_${newAcct.id}_`;
+        localStorage.setItem(prefix + 'practiceSessions', '[]');
+        localStorage.setItem(prefix + 'dailyLogs', '[]');
+        localStorage.setItem(prefix + 'habits', '[]');
+        localStorage.setItem(prefix + 'focusSessions', '[]');
+        localStorage.setItem(prefix + 'memorySessions', '[]');
+        localStorage.setItem(prefix + 'mindfulnessSessions', '[]');
+        localStorage.setItem(prefix + 'chantingSessions', '[]');
+
+        const cleanUser: UserProfile = {
+          id: newAcct.id,
+          username: newAcct.name,
+          email: newAcct.email,
+          targetSleep: 8.0,
+          targetScreenTime: 4.0,
+          onboardingCompleted: false,
+          disciplineScore: 0,
+          currentStreak: 0,
+          createdAt: newAcct.createdAt
+        };
+        setUser(cleanUser);
+        setPracticeSessions([]); // Explicitly empty -> 0 practice points!
+        localStorage.setItem(prefix + 'user', JSON.stringify(cleanUser));
+
+        const welcomeMsg = createDefaultWelcomeMessage(trimmedName);
+        setChatMessages([welcomeMsg]);
+        localStorage.setItem(prefix + 'chatMessages', JSON.stringify([welcomeMsg]));
+
+        // Initialize cloud profile cleanly
+        saveCloudProfile(cloudRes.user.id, cleanUser).catch(console.warn);
 
         setCloudSyncStatus('synced');
         return { success: true };
@@ -719,6 +757,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsDemoMode(false);
       setIsOnboarding(true);
 
+      // CRITICAL FOR BEGINNER ACCOUNT:
+      // Clear all prior in-memory guest/demo data so beginner account starts at strictly 0 points
+      clearInMemoryUserData();
+      const prefix = `smritara_u_${newAccount.id}_`;
+      localStorage.setItem(prefix + 'practiceSessions', '[]');
+      localStorage.setItem(prefix + 'dailyLogs', '[]');
+      localStorage.setItem(prefix + 'habits', '[]');
+      localStorage.setItem(prefix + 'focusSessions', '[]');
+      localStorage.setItem(prefix + 'memorySessions', '[]');
+      localStorage.setItem(prefix + 'mindfulnessSessions', '[]');
+      localStorage.setItem(prefix + 'chantingSessions', '[]');
+
       const cleanUser: UserProfile = {
         id: newAccount.id,
         username: newAccount.name,
@@ -732,6 +782,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
 
       setUser(cleanUser);
+      setPracticeSessions([]); // Explicitly empty -> 0 practice points!
       setHabits([]);
       setDailyLogs([]);
       setFocusSessions([]);
@@ -739,14 +790,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setMindfulnessSessions([]);
       setChantingSessions([]);
       setFavourites([]);
-      setChatMessages([
-        {
-          id: 'welcome_new',
-          sender: 'coach',
-          text: `Welcome to **SMRITARA**, ${trimmedName}! Complete your onboarding questionnaire to generate your personalized practice plan.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
+      localStorage.setItem(prefix + 'user', JSON.stringify(cleanUser));
+
+      const welcomeMsg = createDefaultWelcomeMessage(trimmedName);
+      setChatMessages([welcomeMsg]);
+      localStorage.setItem(prefix + 'chatMessages', JSON.stringify([welcomeMsg]));
 
       return { success: true };
     } catch (err: any) {
@@ -1269,7 +1317,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    setChatMessages(prev => [...prev, userMsg]);
+    // Immediately persist user message so reload will not lose it
+    const updatedWithUser = [...chatMessages, userMsg];
+    setChatMessages(updatedWithUser);
+    localStorage.setItem(getPrefix() + 'chatMessages', JSON.stringify(updatedWithUser));
 
     const context = {
       user,
@@ -1291,7 +1342,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         proposedActions: response.proposedActions,
         isGrounded: true
       };
-      setChatMessages(prev => [...prev, coachMsg]);
+      const updatedWithCoach = [...updatedWithUser, coachMsg];
+      setChatMessages(updatedWithCoach);
+      localStorage.setItem(getPrefix() + 'chatMessages', JSON.stringify(updatedWithCoach));
     } catch {
       const fallback = await sendCoachMessage('', context, text, chatMessages);
       const coachMsg: ChatMessage = {
@@ -1302,19 +1355,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         proposedActions: fallback.proposedActions,
         isGrounded: true
       };
-      setChatMessages(prev => [...prev, coachMsg]);
+      const updatedWithCoach = [...updatedWithUser, coachMsg];
+      setChatMessages(updatedWithCoach);
+      localStorage.setItem(getPrefix() + 'chatMessages', JSON.stringify(updatedWithCoach));
     }
   };
 
   const clearCoachChat = () => {
-    setChatMessages([
-      {
-        id: 'msg_new_' + Date.now(),
-        sender: 'coach',
-        text: `Conversation cleared. How can I assist your personal growth and Smriti practice today, ${user.username}?`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }
-    ]);
+    const welcome = createDefaultWelcomeMessage(user.username);
+    setChatMessages([welcome]);
+    localStorage.setItem(getPrefix() + 'chatMessages', JSON.stringify([welcome]));
   };
 
   const applyAction = (actionId: string) => {

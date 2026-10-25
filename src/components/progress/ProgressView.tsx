@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
   Award, 
@@ -21,11 +21,19 @@ import {
   Eye,
   RefreshCw,
   X,
-  AlertCircle
+  AlertCircle,
+  ExternalLink,
+  Settings
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { compareWithPreviousSession, type PracticeSession } from '../../engine/sessionProgressEngine';
-import { generateWeeklyReport, downloadReportFile, type WeeklyProgressReport } from '../../engine/weeklyReportEngine';
+import { 
+  generateWeeklyReport, 
+  downloadReportFile, 
+  getGmailComposeUrl, 
+  getMailtoUrl,
+  type WeeklyProgressReport 
+} from '../../engine/weeklyReportEngine';
 
 export const ProgressView: React.FC = () => {
   const { 
@@ -48,9 +56,31 @@ export const ProgressView: React.FC = () => {
 
   const [recipientEmail, setRecipientEmail] = useState<string>(user.email || '');
   const [isSendingReport, setIsSendingReport] = useState<boolean>(false);
-  const [sendFeedback, setSendFeedback] = useState<{ status: 'success' | 'error'; message: string } | null>(null);
+  const [sendFeedback, setSendFeedback] = useState<{ status: 'success' | 'error'; message: string; showGmailOption?: boolean } | null>(null);
   const [previewReport, setPreviewReport] = useState<WeeklyProgressReport | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
+
+  // SMTP Settings state
+  const [isSmtpModalOpen, setIsSmtpModalOpen] = useState<boolean>(false);
+  const [smtpUser, setSmtpUser] = useState<string>('');
+  const [smtpPass, setSmtpPass] = useState<string>('');
+  const [smtpHost, setSmtpHost] = useState<string>('smtp.gmail.com');
+  const [smtpPort, setSmtpPort] = useState<string>('465');
+  const [isTestingSmtp, setIsTestingSmtp] = useState<boolean>(false);
+  const [smtpStatusMessage, setSmtpStatusMessage] = useState<{ status: 'idle' | 'success' | 'error'; message: string }>({ status: 'idle', message: '' });
+  const [smtpConfigured, setSmtpConfigured] = useState<boolean>(false);
+
+  useEffect(() => {
+    fetch('/api/config/smtp')
+      .then(r => r.json())
+      .then(d => {
+        if (d?.configured) {
+          setSmtpConfigured(true);
+          if (d.user) setSmtpUser(d.user);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedActivityType, setSelectedActivityType] = useState<string>('all');
@@ -88,6 +118,45 @@ export const ProgressView: React.FC = () => {
 
   const unlockedCount = milestones.filter(m => m.unlocked).length;
 
+  const handleOpenInGmail = (customRecipient?: string) => {
+    const target = customRecipient || recipientEmail.trim() || user.email || 'client@gmail.com';
+    const rpt = generateWeeklyReport(user, dailyLogs, practiceSessions, habits);
+    const composeUrl = getGmailComposeUrl(target, rpt);
+    window.open(composeUrl, '_blank', 'noopener,noreferrer');
+    setSendFeedback({
+      status: 'success',
+      message: `Opened Gmail compose window with report pre-filled for ${target}. Click "Send" in Gmail to deliver!`
+    });
+  };
+
+  const handleSaveSmtp = async () => {
+    if (!smtpUser || !smtpPass) {
+      setSmtpStatusMessage({ status: 'error', message: 'Please enter both your Gmail address and 16-character App Password.' });
+      return;
+    }
+    setIsTestingSmtp(true);
+    setSmtpStatusMessage({ status: 'idle', message: '' });
+    try {
+      const res = await fetch('/api/config/smtp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: smtpUser, pass: smtpPass, host: smtpHost, port: smtpPort })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSmtpConfigured(true);
+        setSmtpStatusMessage({ status: 'success', message: 'SMTP credentials verified & saved! Automated delivery active.' });
+        setTimeout(() => setIsSmtpModalOpen(false), 1200);
+      } else {
+        setSmtpStatusMessage({ status: 'error', message: data.error || 'Failed to verify SMTP credentials.' });
+      }
+    } catch (err: any) {
+      setSmtpStatusMessage({ status: 'error', message: err.message || 'Error connecting to SMTP configuration.' });
+    } finally {
+      setIsTestingSmtp(false);
+    }
+  };
+
   const handleSendReport = async () => {
     const target = recipientEmail.trim() || user.email;
     if (!target || !target.includes('@')) {
@@ -98,9 +167,21 @@ export const ProgressView: React.FC = () => {
     setSendFeedback(null);
     try {
       const res = await generateAndEmailReport(target);
-      setSendFeedback({ status: res.success ? 'success' : 'error', message: res.message });
+      if (res.success) {
+        setSendFeedback({ status: 'success', message: res.message });
+      } else {
+        setSendFeedback({ 
+          status: 'error', 
+          message: res.message,
+          showGmailOption: true
+        });
+      }
     } catch (err: any) {
-      setSendFeedback({ status: 'error', message: err.message || 'Failed to dispatch report.' });
+      setSendFeedback({ 
+        status: 'error', 
+        message: err.message || 'Failed to dispatch report.',
+        showGmailOption: true
+      });
     } finally {
       setIsSendingReport(false);
     }
@@ -541,15 +622,26 @@ export const ProgressView: React.FC = () => {
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '18px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => handleOpenInGmail()}
+              className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#1A73E8', borderColor: '#1A73E8', color: '#FFFFFF' }}
+              title="Open Gmail with report pre-filled ready to send"
+            >
+              <Mail size={15} />
+              <span>Open in Gmail (1-Click)</span>
+            </button>
+
             <button
               onClick={handleSendReport}
               disabled={isSendingReport}
-              className="btn btn-primary"
+              className="btn btn-secondary"
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              title="Dispatch via configured SMTP server"
             >
               {isSendingReport ? <RefreshCw size={15} className="spin" /> : <Send size={15} />}
-              <span>{isSendingReport ? 'Generating & Dispatching...' : 'Generate & Email Report Now'}</span>
+              <span>{isSendingReport ? 'Sending...' : 'Send via SMTP Server'}</span>
             </button>
 
             <button
@@ -558,7 +650,17 @@ export const ProgressView: React.FC = () => {
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <Eye size={15} />
-              <span>Preview Report</span>
+              <span>Preview</span>
+            </button>
+
+            <button
+              onClick={() => setIsSmtpModalOpen(true)}
+              className="btn btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              title="Configure Gmail App Password or SMTP credentials"
+            >
+              <Settings size={15} />
+              <span>{smtpConfigured ? 'SMTP Connected' : 'SMTP Setup'}</span>
             </button>
           </div>
         </div>
@@ -575,11 +677,33 @@ export const ProgressView: React.FC = () => {
             marginBottom: '16px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '10px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {sendFeedback.status === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
               <span>{sendFeedback.message}</span>
+              {sendFeedback.showGmailOption && (
+                <div style={{ display: 'inline-flex', gap: '8px', marginLeft: '6px' }}>
+                  <button
+                    onClick={() => handleOpenInGmail()}
+                    className="btn btn-sm"
+                    style={{ background: '#1A73E8', color: '#fff', fontSize: '0.78rem', padding: '3px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <Mail size={13} />
+                    <span>Open in Gmail (1-Click)</span>
+                  </button>
+                  <button
+                    onClick={() => setIsSmtpModalOpen(true)}
+                    className="btn btn-sm btn-secondary"
+                    style={{ fontSize: '0.78rem', padding: '3px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <Settings size={13} />
+                    <span>Setup SMTP</span>
+                  </button>
+                </div>
+              )}
             </div>
             <button onClick={() => setSendFeedback(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'inherit' }}>
               <X size={14} />
@@ -677,7 +801,15 @@ export const ProgressView: React.FC = () => {
                 </h3>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => handleOpenInGmail(recipientEmail)}
+                  className="btn btn-primary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#1A73E8', borderColor: '#1A73E8', color: '#FFFFFF' }}
+                >
+                  <Mail size={14} />
+                  <span>Send via Gmail (1-Click)</span>
+                </button>
                 <button
                   onClick={() => downloadReportFile(previewReport, 'md')}
                   className="btn btn-secondary btn-sm"
@@ -779,21 +911,204 @@ export const ProgressView: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
               <button onClick={() => setIsPreviewOpen(false)} className="btn btn-secondary">
                 Close Preview
+              </button>
+              <button
+                onClick={() => {
+                  handleOpenInGmail(recipientEmail);
+                }}
+                className="btn btn-primary"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#1A73E8', borderColor: '#1A73E8' }}
+              >
+                <Mail size={15} />
+                <span>Open in Gmail (1-Click)</span>
               </button>
               <button
                 onClick={() => {
                   setIsPreviewOpen(false);
                   handleSendReport();
                 }}
-                className="btn btn-primary"
+                className="btn btn-secondary"
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 <Send size={15} />
-                <span>Email Report to {recipientEmail || user.email}</span>
+                <span>Send via SMTP</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SMTP Configuration Modal */}
+      {isSmtpModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 120,
+          padding: '20px'
+        }}>
+          <div className="glass-card" style={{
+            maxWidth: '540px',
+            width: '100%',
+            padding: '28px',
+            background: '#FFFFFF',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setIsSmtpModalOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '18px',
+                right: '18px',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer'
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                background: 'var(--primary-subtle)',
+                color: 'var(--primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Settings size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                  Automated SMTP Email Setup
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                  Configure your Gmail address & App Password to email reports automatically.
+                </p>
+              </div>
+            </div>
+
+            <div style={{
+              background: '#F0F9FF',
+              border: '1px solid #BAE6FD',
+              borderRadius: 'var(--radius-sm)',
+              padding: '12px 14px',
+              fontSize: '0.8rem',
+              color: '#0369A1',
+              marginBottom: '18px',
+              lineHeight: 1.5
+            }}>
+              <strong>💡 How to get a Google App Password:</strong><br />
+              1. Open <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" style={{ color: '#0284C7', textDecoration: 'underline' }}>Google Account → App Passwords</a><br />
+              2. Generate a new password named <em>"SMRITARA"</em> (16 letters).<br />
+              3. Paste the 16 letters into the password field below.
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  GMAIL / SMTP USERNAME
+                </label>
+                <input
+                  type="email"
+                  value={smtpUser}
+                  onChange={e => setSmtpUser(e.target.value)}
+                  placeholder="e.g. yourname@gmail.com"
+                  className="input-field"
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.9rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: '#FFFFFF' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  GOOGLE APP PASSWORD (16-CHARACTERS)
+                </label>
+                <input
+                  type="password"
+                  value={smtpPass}
+                  onChange={e => setSmtpPass(e.target.value)}
+                  placeholder="xxxx xxxx xxxx xxxx"
+                  className="input-field"
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '0.9rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: '#FFFFFF' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    SMTP HOST
+                  </label>
+                  <input
+                    type="text"
+                    value={smtpHost}
+                    onChange={e => setSmtpHost(e.target.value)}
+                    placeholder="smtp.gmail.com"
+                    className="input-field"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.84rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: '#FFFFFF' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    PORT
+                  </label>
+                  <input
+                    type="text"
+                    value={smtpPort}
+                    onChange={e => setSmtpPort(e.target.value)}
+                    placeholder="465"
+                    className="input-field"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.84rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: '#FFFFFF' }}
+                  />
+                </div>
+              </div>
+
+              {smtpStatusMessage.status !== 'idle' && (
+                <div style={{
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.82rem',
+                  background: smtpStatusMessage.status === 'success' ? 'rgba(40, 84, 67, 0.1)' : 'rgba(220, 38, 38, 0.1)',
+                  color: smtpStatusMessage.status === 'success' ? 'var(--primary)' : '#DC2626',
+                  border: `1px solid ${smtpStatusMessage.status === 'success' ? 'rgba(40, 84, 67, 0.3)' : 'rgba(220, 38, 38, 0.3)'}`
+                }}>
+                  {smtpStatusMessage.message}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                <button
+                  onClick={() => setIsSmtpModalOpen(false)}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.86rem' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveSmtp}
+                  disabled={isTestingSmtp}
+                  className="btn btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.86rem' }}
+                >
+                  {isTestingSmtp ? <RefreshCw size={14} className="spin" /> : <CheckCircle2 size={14} />}
+                  <span>{isTestingSmtp ? 'Verifying SMTP...' : 'Verify & Save Credentials'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

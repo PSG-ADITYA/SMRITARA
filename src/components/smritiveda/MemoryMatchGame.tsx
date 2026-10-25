@@ -4,6 +4,7 @@ import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
 import { MEMORY_MATCH_CARDS } from '../../data/culturalContent';
 import { soundEngine } from '../../engine/audioEngine';
+import { MemoryObjectSVG, DharmaWheelSVG } from '../common/icons/MemoryObjectIcons';
 
 interface CardState {
   instanceId: number;
@@ -199,14 +200,16 @@ export const MemoryMatchGame: React.FC<{ onComplete?: () => void }> = ({ onCompl
               >
                 {visible ? (
                   <>
-                    <div style={{ fontSize: '2rem' }}>{card.icon}</div>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
+                      <MemoryObjectSVG objectKey={card.icon} size={36} />
+                    </div>
                     <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ffffff', marginTop: '4px', textAlign: 'center', padding: '0 4px' }}>
                       {card.symbol}
                     </div>
                   </>
                 ) : (
-                  <div style={{ fontSize: '1.4rem', color: 'var(--text-muted)' }}>
-                    ☸️
+                  <div style={{ display: 'flex', justifyContent: 'center', opacity: 0.5 }}>
+                    <DharmaWheelSVG size={28} color="#94A3B8" />
                   </div>
                 )}
               </div>

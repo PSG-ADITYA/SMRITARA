@@ -1,18 +1,7 @@
 {
-  "passed": [
-    "Registration & Auth: Account creation modal mounts cleanly with secure credentials handling",
-    "Session Restoration: Authenticated user session and name correctly restored across page refresh",
-    "Required Name Validation: Onboarding strictly prevents empty names with accessible error alert",
-    "Genuine Empty State: Zero fabricated points, no fake Demo Voyager profile, clean uncorrupted dashboard displaying real user",
-    "Session Isolation: No fabricated sessions injected into user practice history",
-    "Truthful Sleep Reporting: Separates actual sleep from target goal; displays \"No previous record\" rather than inventing comparisons",
-    "Settings & Recitation Speed: Recitation defaults to exactly 1.0×; discloses browser speech engine technical boundaries",
-    "Cultural Library Scale: Verified 128 authentic entries across 4 languages (Sanskrit: 32, Telugu: 32, Hindi: 32, English: 32)",
-    "Cultural Content Integrity: 0 duplicate IDs detected across 128 entries",
-    "AI Life Coach Server Proxy: Server endpoint /api/coach generates verified Gemini response with credentials kept server-side",
-    "AI Coach Security & Validation: Non-POST requests correctly rejected with HTTP 405 Method Not Allowed",
-    "Accessibility & Responsiveness: Verified prefers-reduced-motion overrides, accessible focus outlines, and mobile responsive layout queries"
+  "passed": [],
+  "failed": [
+    "Uncaught suite error: Navigation timeout of 15000 ms exceeded"
   ],
-  "failed": [],
   "details": {}
 }
