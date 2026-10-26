@@ -23,7 +23,12 @@ export const SpokenGuideBar: React.FC<SpokenGuideBarProps> = ({ onStartTour }) =
   const [playbackState, setPlaybackState] = useState<SpokenPlaybackState>('idle');
   const [currentCaption, setCurrentCaption] = useState<string>('');
   const [isMuted, setIsMuted] = useState<boolean>(!soundEnabled);
-  const [isMinimized, setIsMinimized] = useState<boolean>(false);
+  const [isMinimized, setIsMinimized] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth <= 768;
+    }
+    return false;
+  });
 
   useEffect(() => {
     const unsubscribe = spokenGuideService.subscribe({
@@ -86,6 +91,7 @@ export const SpokenGuideBar: React.FC<SpokenGuideBarProps> = ({ onStartTour }) =
 
   return (
     <aside
+      className={`spoken-guide-bar ${isMinimized ? 'is-minimized' : ''}`}
       aria-label="Spoken AI Guide Controls"
       style={{
         position: 'fixed',
@@ -93,9 +99,9 @@ export const SpokenGuideBar: React.FC<SpokenGuideBarProps> = ({ onStartTour }) =
         right: '24px',
         zIndex: 90,
         maxWidth: isMinimized ? '280px' : '480px',
-        width: 'calc(100% - 48px)',
+        width: isMinimized ? 'auto' : 'calc(100% - 48px)',
         background: '#FFFFFF',
-        borderRadius: '16px',
+        borderRadius: isMinimized ? '9999px' : '16px',
         boxShadow: '0 12px 32px rgba(40, 84, 67, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08)',
         border: '1.5px solid var(--primary-light)',
         transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -154,9 +160,15 @@ export const SpokenGuideBar: React.FC<SpokenGuideBarProps> = ({ onStartTour }) =
               border: 'none',
               color: 'var(--text-secondary)',
               cursor: 'pointer',
-              padding: '4px'
+              padding: '6px',
+              minWidth: '28px',
+              minHeight: '28px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
             title={isMinimized ? 'Expand Guide' : 'Minimize Guide'}
+            aria-label={isMinimized ? 'Expand Spoken AI Guide' : 'Minimize Spoken AI Guide'}
           >
             {isMinimized ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>

@@ -45,13 +45,82 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside className="app-sidebar" aria-label="Main Navigation">
-      {/* Brand Header */}
-      <div style={{ padding: '20px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
+      {/* 1. Mobile Top Bar (active on <= 768px screens) */}
+      <div className="sidebar-mobile-header" style={{ display: 'none' }}>
+        <SmritaraBrand variant="full" size="sm" showTagline={false} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Ambient Audio Toggle */}
+          <button
+            onClick={toggleAmbient}
+            className="btn btn-secondary btn-sm"
+            style={{
+              padding: '4px 10px',
+              fontSize: '0.74rem',
+              minHeight: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: ambientEnabled ? 'var(--primary)' : 'var(--text-muted)',
+              borderColor: ambientEnabled ? 'var(--primary-light)' : 'var(--border-subtle)',
+              background: ambientEnabled ? 'var(--primary-subtle)' : '#FFFFFF'
+            }}
+            title={ambientEnabled ? 'Pause soothing ambient drone' : 'Play soothing 432Hz ambient drone'}
+            aria-label={ambientEnabled ? 'Mute ambient sound' : 'Play ambient sound'}
+          >
+            {ambientEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+            <span>{ambientEnabled ? 'Drone' : 'Mute'}</span>
+          </button>
+
+          {/* User Streak & Practice Points Pill */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            background: 'var(--bg-card-inner)',
+            border: '1px solid var(--border-subtle)',
+            padding: '4px 9px',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: 'var(--accent-amber)'
+          }}>
+            <Sparkles size={13} />
+            <span>{user.currentStreak}d</span>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>•</span>
+            <span style={{ color: 'var(--primary)' }}>{practicePoints}pt</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Demo Sandbox Notice if active */}
+      {isDemoMode && (
+        <div className="sidebar-mobile-demo-banner" style={{ display: 'none' }}>
+          <span>Demo Sandbox</span>
+          <button
+            onClick={exitDemoMode}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--accent-amber)',
+              fontWeight: 700,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              fontSize: '0.72rem'
+            }}
+          >
+            Exit Demo
+          </button>
+        </div>
+      )}
+
+      {/* 2. Desktop Brand Header (hidden on mobile) */}
+      <div className="sidebar-desktop-header" style={{ padding: '20px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
         <SmritaraBrand variant="full" size="md" />
       </div>
 
-      {/* Navigation List */}
-      <nav style={{ flex: 1, padding: '14px 0', overflowY: 'auto' }}>
+      {/* 3. Navigation List (flex: 1 vertical on desktop, horizontal swipeable on mobile) */}
+      <nav className="sidebar-nav" style={{ flex: 1, padding: '14px 0', overflowY: 'auto' }}>
         {navItems.map(item => {
           const Icon = item.icon;
           // Match tab directly or backward-compatible aliases
@@ -79,8 +148,8 @@ export const Sidebar: React.FC = () => {
         })}
       </nav>
 
-      {/* Ambient Audio Quick Toggle */}
-      <div style={{ padding: '0 14px 10px 14px' }}>
+      {/* 4. Ambient Audio Quick Toggle (Desktop) */}
+      <div className="sidebar-ambient-desktop" style={{ padding: '0 14px 10px 14px' }}>
         <button
           onClick={toggleAmbient}
           className="btn btn-secondary btn-sm"
@@ -103,8 +172,8 @@ export const Sidebar: React.FC = () => {
         </button>
       </div>
 
-      {/* Bottom User & Mode Controls */}
-      <div style={{ padding: '14px', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card-inner)' }}>
+      {/* 5. Bottom User & Mode Controls (Desktop) */}
+      <div className="sidebar-footer-desktop" style={{ padding: '14px', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card-inner)' }}>
         {isDemoMode ? (
           <div style={{ marginBottom: '10px' }}>
             <div style={{
