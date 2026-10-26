@@ -106,13 +106,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose }) =>
         const res = await loginAccount(email.trim(), password);
         setLoading(false);
         if (!res.success) {
-          setError(res.error || 'Sign in failed.');
+          if (res.error && res.error.toLowerCase().includes('email not confirmed')) {
+            setConfirmPendingEmail(email.trim());
+            setMode('confirm_pending');
+          } else {
+            setError(res.error || 'Sign in failed.');
+          }
         } else {
           onClose();
         }
       } catch (err: any) {
         setLoading(false);
-        setError(err.message || 'Sign in failed.');
+        if (err.message && err.message.toLowerCase().includes('email not confirmed')) {
+          setConfirmPendingEmail(email.trim());
+          setMode('confirm_pending');
+        } else {
+          setError(err.message || 'Sign in failed.');
+        }
       }
     }
   };

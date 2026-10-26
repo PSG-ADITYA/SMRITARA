@@ -404,7 +404,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleSaveTip = (tipId: string) => {
-    setSavedTipIds(prev => (prev.includes(tipId) ? prev.filter(id => id !== tipId) : [...prev, tipId]));
+    setSavedTipIds(prev => {
+      const isSaved = prev.includes(tipId);
+      const next = isSaved ? prev.filter(id => id !== tipId) : [...prev, tipId];
+      if (currentUser && isSupabaseConfigured()) {
+        toggleCloudSavedTip(currentUser.id, tipId, !isSaved).catch(console.warn);
+      }
+      return next;
+    });
   };
 
   // Unified Milestones and Practice Points
@@ -578,12 +585,77 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           return sanitized;
         });
+      } else {
+        // Deferred profile sync on verified first login
+        const initialProfile: UserProfile = {
+          id: userId,
+          username: currentUser?.name || 'Voyager',
+          email: currentUser?.email || '',
+          targetSleep: 8.0,
+          targetScreenTime: 4.0,
+          onboardingCompleted: false,
+          disciplineScore: 0,
+          currentStreak: 0,
+          createdAt: currentUser?.createdAt || new Date().toISOString()
+        };
+        saveCloudProfile(userId, initialProfile).catch(e => console.warn('Deferred profile sync notice:', e));
       }
+
       // Always reset with cloud data or empty array to avoid leaking guest or demo sessions
-      setPracticeSessions(cloudSessions || []);
+      const sessions = cloudSessions || [];
+      setPracticeSessions(sessions);
       setDailyLogs(cloudLogs || []);
       setHabits(cloudHabitsList || []);
       setSavedTipIds(cloudTipsList || []);
+
+      // Reconstruct cognitive game memory sessions and chanting sessions from cloud practice sessions
+      if (sessions.length > 0) {
+        const reconstructedMemory: MemorySession[] = sessions
+          .filter(s => s.activityType === 'memory')
+          .map(s => {
+            const ts = s.startTime || s.completedAt || new Date().toISOString();
+            return {
+              id: s.id,
+              date: ts.slice(0, 10),
+              gameType: (s.activityId || 'sequence') as any,
+              score: s.score || 0,
+              accuracy: s.score ? Math.min(100, Math.round(s.score)) : 100,
+              timeSpentSeconds: s.durationSeconds || 60,
+              timestamp: ts,
+              difficulty: (s.difficulty as any) || 'medium'
+            };
+          });
+        if (reconstructedMemory.length > 0) {
+          setMemorySessions(prev => {
+            const existingIds = new Set(prev.map(m => m.id));
+            const fresh = reconstructedMemory.filter(m => !existingIds.has(m.id));
+            return [...fresh, ...prev];
+          });
+        }
+
+        const reconstructedChanting: ChantingSession[] = sessions
+          .filter(s => s.activityType === 'chanting')
+          .map(s => ({
+            id: s.id,
+            date: s.completedAt?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+            chantId: s.activityId || 'sanskrit_gayatri',
+            chantTitle: s.activityTitle?.replace(/^Chanting:\s*/, '') || 'Chanting Session',
+            language: 'sanskrit',
+            repetitionsCompleted: s.correctCount || 9,
+            targetRepetitions: s.correctCount || 9,
+            mode: 'repeat',
+            durationSeconds: s.durationSeconds || 120,
+            timestamp: s.startTime || s.completedAt || new Date().toISOString()
+          }));
+        if (reconstructedChanting.length > 0) {
+          setChantingSessions(prev => {
+            const existingIds = new Set(prev.map(c => c.id));
+            const fresh = reconstructedChanting.filter(c => !existingIds.has(c.id));
+            return [...fresh, ...prev];
+          });
+        }
+      }
+
       setCloudSyncStatus('synced');
     } catch (err) {
       console.warn('Failed to load cloud records:', err);
@@ -1128,11 +1200,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       streak: 0,
       createdAt: new Date().toISOString()
     };
-    setHabits(prev => [...prev, newHabit]);
+    setHabits(prev => {
+      const updated = [...prev, newHabit];
+      if (currentUser && isSupabaseConfigured()) {
+        saveCloudHabits(currentUser.id, updated).catch(console.warn);
+      }
+      return updated;
+    });
   };
 
   const deleteHabit = (id: string) => {
-    setHabits(prev => prev.filter(h => h.id !== id));
+    setHabits(prev => {
+      const updated = prev.filter(h => h.id !== id);
+      if (currentUser && isSupabaseConfigured()) {
+        deleteCloudHabit(currentUser.id, id).catch(console.warn);
+      }
+      return updated;
+    });
   };
 
   const toggleHabitForDate = (habitId: string, dateStr: string) => {
@@ -1161,6 +1245,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           disciplineScore: breakdown.total
         };
 
+        if (currentUser && isSupabaseConfigured()) {
+          saveCloudDailyLog(currentUser.id, updatedLog).catch(console.warn);
+        }
+
         return prevLogs.map(l => l.date === dateStr ? updatedLog : l);
       } else {
         const newCompletedIds = [habitId];
@@ -1187,6 +1275,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           reportedAt: new Date().toISOString(),
           appliedDate: dateStr
         };
+
+        if (currentUser && isSupabaseConfigured()) {
+          saveCloudDailyLog(currentUser.id, updatedLog).catch(console.warn);
+        }
 
         return [...prevLogs, updatedLog];
       }
@@ -1230,11 +1322,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const newStreak = calculateStreak(loggedDates);
       const rolling = calculateRollingScore(updatedLogs);
 
-      setUser(prev => ({
-        ...prev,
-        currentStreak: newStreak,
-        disciplineScore: rolling
-      }));
+      setUser(prev => {
+        const updated = {
+          ...prev,
+          currentStreak: newStreak,
+          disciplineScore: rolling
+        };
+        if (currentUser && isSupabaseConfigured()) {
+          saveCloudProfile(currentUser.id, updated).catch(console.warn);
+        }
+        return updated;
+      });
 
       return updatedLogs;
     });

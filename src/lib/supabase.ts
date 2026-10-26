@@ -50,10 +50,15 @@ export async function signUpWithEmail(email: string, password: string, fullName:
   }
 
   try {
+    const redirectUrl = typeof window !== 'undefined' && window.location.origin
+      ? window.location.origin
+      : 'https://smritara-topaz.vercel.app';
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
         },
@@ -64,19 +69,25 @@ export async function signUpWithEmail(email: string, password: string, fullName:
       return { success: false, error: error.message };
     }
 
-    // Automatically initialize user profile in public.profiles table
-    if (data.user) {
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
-        email: data.user.email,
-        username: fullName,
-        onboarding_completed: false,
-        discipline_score: 0,
-        current_streak: 0,
-        target_sleep: 8.0,
-        target_screen_time: 4.0,
-        created_at: new Date().toISOString(),
-      });
+    // Automatically initialize user profile in public.profiles table if session is active.
+    // If email confirmation is required, session is null, and RLS requires auth.uid() = id.
+    // In that scenario, profile initialization is performed in loadCloudData once verified and signed in.
+    if (data.user && data.session) {
+      try {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          email: data.user.email,
+          username: fullName,
+          onboarding_completed: false,
+          discipline_score: 0,
+          current_streak: 0,
+          target_sleep: 8.0,
+          target_screen_time: 4.0,
+          created_at: new Date().toISOString(),
+        });
+      } catch (profileErr) {
+        console.warn('Initial profile creation deferred until session verification:', profileErr);
+      }
     }
 
     return { success: true, user: data.user, session: data.session };
@@ -124,8 +135,12 @@ export async function resetPassword(email: string): Promise<{ success: boolean; 
   }
 
   try {
+    const redirectUrl = typeof window !== 'undefined' && window.location.origin
+      ? window.location.origin
+      : 'https://smritara-topaz.vercel.app';
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
+      redirectTo: redirectUrl,
     });
     if (error) return { success: false, error: error.message };
     return { success: true };
@@ -140,12 +155,16 @@ export async function resendVerificationEmail(email: string): Promise<{ success:
   }
 
   try {
+    const redirectUrl = typeof window !== 'undefined' && window.location.origin
+      ? window.location.origin
+      : 'https://smritara-topaz.vercel.app';
+
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: email.trim(),
       options: {
-        emailRedirectTo: window.location.origin
-      }
+        emailRedirectTo: redirectUrl,
+      },
     });
     if (error) return { success: false, error: error.message };
     return { success: true };
