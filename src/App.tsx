@@ -15,22 +15,12 @@ import { SettingsView } from './components/settings/SettingsView';
 import { DailyLogModal } from './components/discipline/DailyLogModal';
 import { SpokenGuideBar } from './components/guide/SpokenGuideBar';
 import { GuidedTourModal } from './components/guide/GuidedTourModal';
+import { ResetPasswordModal } from './components/onboarding/ResetPasswordModal';
 
 const AppContent: React.FC = () => {
-  const { user, isAuthenticated, isDemoMode, isOnboarding, activeTab } = useApp();
+  const { user, isAuthenticated, isDemoMode, isOnboarding, activeTab, isPasswordRecovery, setIsPasswordRecovery } = useApp();
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
-
-  // If user is not signed in and not exploring demo, show Welcome screen
-  if (!isAuthenticated && !isOnboarding) {
-    return <WelcomeView />;
-  }
-
-  // If user is completing profile onboarding or has not completed onboarding yet
-  // Requirement: Do not display dashboard until onboarding is completed (except demo mode)
-  if (isOnboarding || (isAuthenticated && !isDemoMode && !user.onboardingCompleted)) {
-    return <OnboardingWizard />;
-  }
 
   const getHeaderMeta = () => {
     switch (activeTab) {
@@ -87,41 +77,54 @@ const AppContent: React.FC = () => {
   const { title, subtitle } = getHeaderMeta();
 
   return (
-    <div className="app-container">
-      <Sidebar />
-      <main className="app-content">
-        <Header
-          title={title}
-          subtitle={subtitle}
-          onOpenLogModal={() => setIsLogModalOpen(true)}
-        />
+    <>
+      <ResetPasswordModal
+        isOpen={isPasswordRecovery}
+        onClose={() => setIsPasswordRecovery(false)}
+      />
 
-        {activeTab === 'dashboard' && <DashboardView onOpenLogModal={() => setIsLogModalOpen(true)} />}
-        {(activeTab === 'practice' || activeTab === 'discipline' || activeTab === 'bodyclock') && (
-          <PracticeView onOpenLogModal={() => setIsLogModalOpen(true)} />
-        )}
-        {(activeTab === 'games' || activeTab === 'memory') && <MemoryGymView />}
-        {(activeTab === 'library' || activeTab === 'smritiveda') && <SmritiVedaView />}
-        {(activeTab === 'meditation' || activeTab === 'mindfulness') && <MindfulnessView />}
-        {(activeTab === 'progress' || activeTab === 'patterns') && <ProgressView />}
-        {activeTab === 'coach' && <AICoachView />}
-        {activeTab === 'settings' && <SettingsView />}
+      {!isAuthenticated && !isOnboarding ? (
+        <WelcomeView />
+      ) : isOnboarding || (isAuthenticated && !isDemoMode && !user.onboardingCompleted) ? (
+        <OnboardingWizard />
+      ) : (
+        <div className="app-container">
+          <Sidebar />
+          <main className="app-content">
+            <Header
+              title={title}
+              subtitle={subtitle}
+              onOpenLogModal={() => setIsLogModalOpen(true)}
+            />
 
-        <DailyLogModal
-          isOpen={isLogModalOpen}
-          onClose={() => setIsLogModalOpen(false)}
-        />
+            {activeTab === 'dashboard' && <DashboardView onOpenLogModal={() => setIsLogModalOpen(true)} />}
+            {(activeTab === 'practice' || activeTab === 'discipline' || activeTab === 'bodyclock') && (
+              <PracticeView onOpenLogModal={() => setIsLogModalOpen(true)} />
+            )}
+            {(activeTab === 'games' || activeTab === 'memory') && <MemoryGymView />}
+            {(activeTab === 'library' || activeTab === 'smritiveda') && <SmritiVedaView />}
+            {(activeTab === 'meditation' || activeTab === 'mindfulness') && <MindfulnessView />}
+            {(activeTab === 'progress' || activeTab === 'patterns') && <ProgressView />}
+            {activeTab === 'coach' && <AICoachView />}
+            {activeTab === 'settings' && <SettingsView />}
 
-        {/* Spoken AI Website Guide & Captions */}
-        <SpokenGuideBar onStartTour={() => setIsTourOpen(true)} />
+            <DailyLogModal
+              isOpen={isLogModalOpen}
+              onClose={() => setIsLogModalOpen(false)}
+            />
 
-        {/* First-Run Interactive Guided Tour Modal */}
-        <GuidedTourModal
-          isOpen={isTourOpen}
-          onClose={() => setIsTourOpen(false)}
-        />
-      </main>
-    </div>
+            {/* Spoken AI Website Guide & Captions */}
+            <SpokenGuideBar onStartTour={() => setIsTourOpen(true)} />
+
+            {/* First-Run Interactive Guided Tour Modal */}
+            <GuidedTourModal
+              isOpen={isTourOpen}
+              onClose={() => setIsTourOpen(false)}
+            />
+          </main>
+        </div>
+      )}
+    </>
   );
 };
 

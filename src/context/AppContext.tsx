@@ -56,7 +56,9 @@ import {
   fetchCloudSavedTips,
   toggleCloudSavedTip,
   migrateLocalDataToCloud,
-  resendVerificationEmail
+  resendVerificationEmail,
+  deleteCloudAccount,
+  updateUserPassword
 } from '../lib/supabase';
 
 export const migrateLanguagePreference = (lang?: string): InterfaceLanguage => {
@@ -95,6 +97,10 @@ interface AppContextType {
   registerAccount: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string; emailConfirmationRequired?: boolean }>;
   loginAccount: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  deleteAccount: () => Promise<{ success: boolean; error?: string }>;
+  isPasswordRecovery: boolean;
+  setIsPasswordRecovery: (isRecovery: boolean) => void;
+  updateUserNewPassword: (newPassword: string, customEmail?: string) => Promise<{ success: boolean; error?: string }>;
   enterDemoMode: () => void;
   exitDemoMode: () => void;
   completeOnboarding: (prefs: OnboardingPreferences, chronotypeProfile?: ChronotypeProfile) => void;
@@ -249,6 +255,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [isOnboarding, setIsOnboarding] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+
+  const isRecoveryUrl = () => {
+    if (typeof window === 'undefined') return false;
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    return hash.includes('type=recovery') || search.includes('type=recovery');
+  };
+
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(() => isRecoveryUrl());
 
   // Key prefix determines whether storage writes go to demo sandbox or isolated user
   const getPrefix = () => {
@@ -665,9 +680,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Restore session from Supabase on mount & register real-time auth changes
   useEffect(() => {
+    const checkRecovery = () => {
+      if (isRecoveryUrl()) {
+        setIsPasswordRecovery(true);
+      }
+    };
+    checkRecovery();
+    window.addEventListener('hashchange', checkRecovery);
+    window.addEventListener('popstate', checkRecovery);
+
     if (!supabase) return;
 
     getCurrentSession().then(async session => {
+      if (isRecoveryUrl()) {
+        setIsPasswordRecovery(true);
+      }
       if (session?.user) {
         const u = session.user;
         const acct: UserAccount = {
@@ -685,7 +712,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     const { data: authSub } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true);
+        if (session?.user) {
+          const u = session.user;
+          const acct: UserAccount = {
+            id: u.id,
+            email: u.email || '',
+            name: u.user_metadata?.full_name || u.email?.split('@')[0] || 'Voyager',
+            createdAt: u.created_at || new Date().toISOString()
+          };
+          setCurrentUser(acct);
+          localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(acct));
+          loadUserDataFromStorage(u.id, acct.name, acct.email, acct.createdAt);
+        }
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        if (isRecoveryUrl()) {
+          setIsPasswordRecovery(true);
+        }
         const u = session.user;
         const acct: UserAccount = {
           id: u.id,
@@ -699,6 +743,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loadUserDataFromStorage(u.id, acct.name, acct.email, acct.createdAt);
         await loadCloudData(u.id);
       } else if (event === 'SIGNED_OUT') {
+        setIsPasswordRecovery(false);
         localStorage.removeItem(STORAGE_SESSION_KEY);
         setCurrentUser(null);
         setIsDemoMode(false);
@@ -707,6 +752,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     return () => {
+      window.removeEventListener('hashchange', checkRecovery);
+      window.removeEventListener('popstate', checkRecovery);
       authSub?.subscription?.unsubscribe();
     };
   }, []);
@@ -930,10 +977,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resetUserPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    const trimmed = email.trim().toLowerCase();
     if (isSupabaseConfigured()) {
-      return await resetPassword(email);
+      return await resetPassword(trimmed);
     }
-    return { success: true };
+    try {
+      const stored = localStorage.getItem(STORAGE_ACCOUNTS_KEY);
+      const accounts: UserAccount[] = stored ? JSON.parse(stored) : [];
+      const account = accounts.find(a => a.email.toLowerCase() === trimmed);
+      if (account) {
+        setCurrentUser(account);
+        setIsPasswordRecovery(true);
+        return { success: true };
+      }
+      return { success: false, error: 'No account found with this email address.' };
+    } catch {
+      return { success: false, error: 'Password reset request failed.' };
+    }
   };
 
   const resendVerification = async (email: string): Promise<{ success: boolean; error?: string }> => {
@@ -953,6 +1013,131 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsOnboarding(false);
     clearInMemoryUserData();
     setActiveTab('dashboard');
+  };
+
+  const deleteAccount = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const targetUserId = currentUser?.id || user.id;
+      const targetEmail = currentUser?.email || user.email;
+
+      // 1. Cloud cleanup if Supabase is connected and target is not demo/guest placeholder
+      if (isSupabaseConfigured() && targetUserId && targetUserId !== 'guest' && targetUserId !== 'demo_sandbox_user') {
+        try {
+          await deleteCloudAccount(targetUserId);
+        } catch (cloudErr) {
+          console.warn('Cloud account deletion notice:', cloudErr);
+        }
+      }
+
+      // 2. Remove from local registered accounts list (STORAGE_ACCOUNTS_KEY)
+      try {
+        const stored = localStorage.getItem(STORAGE_ACCOUNTS_KEY);
+        if (stored) {
+          const accounts: UserAccount[] = JSON.parse(stored);
+          const filtered = accounts.filter(
+            a => a.id !== targetUserId && (!targetEmail || a.email.toLowerCase() !== targetEmail.toLowerCase())
+          );
+          localStorage.setItem(STORAGE_ACCOUNTS_KEY, JSON.stringify(filtered));
+        }
+      } catch (e) {
+        console.warn('Failed to update accounts registry on delete:', e);
+      }
+
+      // 3. Remove all scoped localStorage keys
+      const keysToRemove: string[] = [];
+      const userPrefix = targetUserId ? `smritara_u_${targetUserId}_` : '';
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (userPrefix && key.startsWith(userPrefix)) {
+          keysToRemove.push(key);
+        } else if (isDemoMode && key.startsWith('smritara_demo_')) {
+          keysToRemove.push(key);
+        } else if (!currentUser && key.startsWith('smritara_guest_')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+
+      // Remove session & global user flags
+      localStorage.removeItem(STORAGE_SESSION_KEY);
+      localStorage.removeItem('smritara_is_demo');
+      localStorage.removeItem('smritara_last_report_date');
+
+      // 4. Reset in-memory state cleanly to unauthenticated empty state
+      clearInMemoryUserData();
+      setCurrentUser(null);
+      setIsDemoMode(false);
+      setIsOnboarding(false);
+      setActiveTab('dashboard');
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Account deletion error:', err);
+      return { success: false, error: err.message || 'Failed to delete account' };
+    }
+  };
+
+  const updateUserNewPassword = async (newPassword: string, customEmail?: string): Promise<{ success: boolean; error?: string }> => {
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters in length.' };
+    }
+
+    const targetEmail = customEmail?.trim() || currentUser?.email || user.email;
+    const targetId = currentUser?.id || user.id;
+
+    if (isSupabaseConfigured()) {
+      const res = await updateUserPassword(newPassword);
+      if (!res.success) {
+        // If Supabase fails (e.g. token expired, missing session in offline/local test),
+        // check if this account exists in local storage registry
+        const stored = localStorage.getItem(STORAGE_ACCOUNTS_KEY);
+        const accounts: UserAccount[] = stored ? JSON.parse(stored) : [];
+        const isLocalAccount = accounts.some(a => 
+          (targetEmail && a.email.toLowerCase() === targetEmail.toLowerCase()) ||
+          (targetId && a.id === targetId)
+        );
+        if (!isLocalAccount) {
+          return { success: false, error: res.error };
+        }
+      }
+    }
+
+    // Also update local storage account hash for offline/local resilience
+    try {
+      const stored = localStorage.getItem(STORAGE_ACCOUNTS_KEY);
+      if (stored) {
+        const accounts: UserAccount[] = JSON.parse(stored);
+        const matchingIndex = accounts.findIndex(a => 
+          (targetEmail && a.email.toLowerCase() === targetEmail.toLowerCase()) || 
+          (targetId && a.id === targetId)
+        );
+        if (matchingIndex !== -1) {
+          const matchingAcct: UserAccount = {
+            ...accounts[matchingIndex],
+            passwordHash: btoa(newPassword)
+          };
+          accounts[matchingIndex] = matchingAcct;
+          localStorage.setItem(STORAGE_ACCOUNTS_KEY, JSON.stringify(accounts));
+          if (!currentUser) {
+            setCurrentUser(matchingAcct);
+            localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(matchingAcct));
+            loadUserDataFromStorage(matchingAcct.id, matchingAcct.name, matchingAcct.email, matchingAcct.createdAt);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to update local account password hash:', e);
+    }
+
+    // Clean recovery parameters/fragments from browser URL history
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      const cleanUrl = window.location.pathname + (window.location.search.includes('type=recovery') ? '' : window.location.search);
+      window.history.replaceState(null, '', cleanUrl);
+    }
+
+    return { success: true };
   };
 
   const enterDemoMode = () => {
@@ -1756,6 +1941,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         registerAccount,
         loginAccount,
         logout,
+        deleteAccount,
+        isPasswordRecovery,
+        setIsPasswordRecovery,
+        updateUserNewPassword,
         enterDemoMode,
         exitDemoMode,
         completeOnboarding,

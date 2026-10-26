@@ -16,7 +16,9 @@ import {
   Volume2,
   VolumeX,
   Sparkles,
-  MessageSquare
+  MessageSquare,
+  Trash2,
+  Lock
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import type { InterfaceLanguage } from '../../types';
@@ -40,9 +42,34 @@ export const SettingsView: React.FC = () => {
     exportData, 
     importData,
     logout,
+    deleteAccount,
+    setIsPasswordRecovery,
     isDemoMode,
     exitDemoMode
   } = useApp();
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [confirmDeleteInput, setConfirmDeleteInput] = useState('');
+  const [confirmDeleteCheckbox, setConfirmDeleteCheckbox] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await deleteAccount();
+      if (!res.success) {
+        setDeleteError(res.error || 'Failed to delete account. Please try again.');
+        setIsDeleting(false);
+      } else {
+        setShowDeleteModal(false);
+      }
+    } catch (err: any) {
+      setDeleteError(err.message || 'An unexpected error occurred while deleting your account.');
+      setIsDeleting(false);
+    }
+  };
 
   const [sleepTarget, setSleepTarget] = useState(user.targetSleep || 8.0);
   const [screenLimit, setScreenLimit] = useState(user.targetScreenTime || 4.0);
@@ -177,14 +204,48 @@ export const SettingsView: React.FC = () => {
               <span>Exit Demo Mode</span>
             </button>
           ) : (
-            <button
-              onClick={logout}
-              className="btn btn-secondary btn-sm"
-              style={{ color: '#dc2626' }}
-            >
-              <LogOut size={14} />
-              <span>Sign Out</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setIsPasswordRecovery(true)}
+                className="btn btn-secondary btn-sm"
+                style={{ color: 'var(--text-main)', borderColor: 'var(--border-subtle)' }}
+                data-testid="change-password-btn"
+                title="Set a new password for this account"
+              >
+                <Lock size={14} />
+                <span>Change Password</span>
+              </button>
+              <button
+                type="button"
+                onClick={logout}
+                className="btn btn-secondary btn-sm"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                <LogOut size={14} />
+                <span>Sign Out</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmDeleteInput('');
+                  setConfirmDeleteCheckbox(false);
+                  setDeleteError(null);
+                  setShowDeleteModal(true);
+                }}
+                className="btn btn-secondary btn-sm"
+                style={{
+                  color: '#dc2626',
+                  borderColor: 'rgba(220, 38, 38, 0.3)',
+                  background: 'rgba(220, 38, 38, 0.04)'
+                }}
+                data-testid="header-delete-account-btn"
+                title="Permanently delete account and all records"
+              >
+                <Trash2 size={14} />
+                <span>Delete Account</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -602,6 +663,269 @@ export const SettingsView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* 6. Danger Zone: Delete Account */}
+      <div 
+        className="clean-card" 
+        style={{ 
+          padding: '24px 28px',
+          border: '1px solid rgba(220, 38, 38, 0.25)',
+          background: 'linear-gradient(180deg, #FFFFFF 0%, rgba(254, 242, 242, 0.35) 100%)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+          <AlertTriangle size={18} color="#dc2626" />
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#dc2626' }}>Danger Zone</h3>
+        </div>
+
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginBottom: '16px', lineHeight: 1.5 }}>
+          Permanently delete your SMRITARA account and all associated records. This will irrevocably erase your practice history, cognitive memory gym scores, circadian logs, custom habits, and cloud synchronization data.
+        </p>
+
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
+          padding: '14px 18px',
+          borderRadius: 'var(--radius-sm)',
+          background: '#FFFFFF',
+          border: '1px solid rgba(220, 38, 38, 0.2)'
+        }}>
+          <div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)' }}>
+              Permanently Delete Account
+            </div>
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Irreversible purge of {user.email || user.username || 'active user'} credentials and all stored records
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setConfirmDeleteInput('');
+              setConfirmDeleteCheckbox(false);
+              setDeleteError(null);
+              setShowDeleteModal(true);
+            }}
+            className="btn btn-sm"
+            style={{
+              backgroundColor: '#dc2626',
+              color: '#FFFFFF',
+              border: 'none',
+              padding: '8px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              borderRadius: 'var(--radius-sm)',
+              boxShadow: '0 1px 2px rgba(220, 38, 38, 0.2)'
+            }}
+            data-testid="danger-zone-delete-btn"
+          >
+            <Trash2 size={14} />
+            <span>Delete Account</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.55)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isDeleting) setShowDeleteModal(false);
+          }}
+        >
+          <div 
+            className="clean-card"
+            style={{
+              maxWidth: '480px',
+              width: '100%',
+              padding: '28px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: 'var(--radius-md)',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.05)',
+              border: '1px solid rgba(220, 38, 38, 0.3)'
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-account-modal-title"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#dc2626',
+                flexShrink: 0
+              }}>
+                <Trash2 size={22} />
+              </div>
+              <div>
+                <h3 id="delete-account-modal-title" style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                  Delete Account
+                </h3>
+                <span style={{ fontSize: '0.78rem', color: '#dc2626', fontWeight: 600 }}>
+                  Warning: This action is permanent and irreversible
+                </span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '14px' }}>
+              Are you sure you want to permanently delete your account (<strong>{user.email || user.username || 'active user'}</strong>)?
+            </p>
+
+            <div style={{
+              background: 'var(--bg-card-inner)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '12px 14px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
+                The following data will be permanently wiped:
+              </div>
+              <ul style={{
+                margin: 0,
+                paddingLeft: '18px',
+                fontSize: '0.78rem',
+                color: 'var(--text-secondary)',
+                lineHeight: 1.6
+              }}>
+                <li>Cognitive memory gym scores & chanting session history</li>
+                <li>Daily circadian logs, sleep, screen time, and discipline streaks</li>
+                <li>Custom good and bad habits and personalized schedules</li>
+                <li>Cloud synchronization profile and authentication credentials</li>
+                <li>Local storage caches and preferences</li>
+              </ul>
+            </div>
+
+            {deleteError && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 12px',
+                borderRadius: 'var(--radius-sm)',
+                marginBottom: '14px',
+                background: 'rgba(220, 38, 38, 0.08)',
+                border: '1px solid rgba(220, 38, 38, 0.3)',
+                color: '#dc2626',
+                fontSize: '0.8rem'
+              }}>
+                <AlertTriangle size={15} />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                fontSize: '0.82rem',
+                color: 'var(--text-main)',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={confirmDeleteCheckbox}
+                  onChange={(e) => setConfirmDeleteCheckbox(e.target.checked)}
+                  disabled={isDeleting}
+                  style={{ marginTop: '2px', accentColor: '#dc2626' }}
+                  data-testid="delete-confirm-checkbox"
+                />
+                <span>I understand that this action is irreversible and all my data will be permanently erased.</span>
+              </label>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                Or type <strong>DELETE</strong> below to confirm:
+              </div>
+              <input
+                type="text"
+                placeholder='Type "DELETE" to confirm'
+                value={confirmDeleteInput}
+                onChange={(e) => setConfirmDeleteInput(e.target.value)}
+                disabled={isDeleting}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1.5px solid var(--border-subtle)',
+                  fontSize: '0.88rem',
+                  boxSizing: 'border-box'
+                }}
+                data-testid="delete-confirm-input"
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setConfirmDeleteInput('');
+                  setConfirmDeleteCheckbox(false);
+                  setDeleteError(null);
+                }}
+                disabled={isDeleting}
+                className="btn btn-secondary btn-sm"
+                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                data-testid="cancel-delete-account-btn"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={(!confirmDeleteCheckbox && confirmDeleteInput.trim().toUpperCase() !== 'DELETE') || isDeleting}
+                className="btn btn-sm"
+                style={{
+                  backgroundColor: (confirmDeleteCheckbox || confirmDeleteInput.trim().toUpperCase() === 'DELETE') && !isDeleting
+                    ? '#dc2626'
+                    : '#fca5a5',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  padding: '8px 18px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: (confirmDeleteCheckbox || confirmDeleteInput.trim().toUpperCase() === 'DELETE') && !isDeleting
+                    ? 'pointer'
+                    : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                data-testid="confirm-delete-account-btn"
+              >
+                <Trash2 size={14} />
+                <span>{isDeleting ? 'Deleting Account...' : 'Permanently Delete'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

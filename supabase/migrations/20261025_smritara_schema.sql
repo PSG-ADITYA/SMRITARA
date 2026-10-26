@@ -118,6 +118,12 @@ CREATE POLICY "Users can update own profile"
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
+CREATE POLICY "Users can delete own profile"
+  ON public.profiles FOR DELETE
+  TO authenticated
+  USING (auth.uid() = id);
+
+
 -- 2. Practice Sessions Policies
 CREATE POLICY "Users can view own practice sessions"
   ON public.practice_sessions FOR SELECT

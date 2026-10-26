@@ -60,7 +60,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose }) =>
         const res = await resetUserPassword(email.trim());
         setLoading(false);
         if (res.success) {
-          setSuccessMsg('Password reset instructions have been dispatched to your email.');
+          if (cloudActive) {
+            setSuccessMsg('Password reset instructions have been dispatched to your email. Click the recovery link in your email to set your new password.');
+          } else {
+            onClose();
+          }
         } else {
           setError(res.error || 'Failed to dispatch password reset email.');
         }

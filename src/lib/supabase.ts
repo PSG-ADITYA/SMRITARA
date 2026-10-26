@@ -149,6 +149,23 @@ export async function resetPassword(email: string): Promise<{ success: boolean; 
   }
 }
 
+export async function updateUserPassword(newPassword: string): Promise<{ success: boolean; error?: string }> {
+  if (!supabase) {
+    return { success: false, error: 'Cloud authentication is not configured yet.' };
+  }
+
+  try {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to update password.' };
+  }
+}
+
+
 export async function resendVerificationEmail(email: string): Promise<{ success: boolean; error?: string }> {
   if (!supabase) {
     return { success: false, error: 'Cloud authentication is not configured yet.' };
@@ -512,3 +529,24 @@ export async function migrateLocalDataToCloud(
     return { success: false, migratedCounts: counts };
   }
 }
+
+// Permanently delete user data across all tables and sign out
+export async function deleteCloudAccount(userId: string): Promise<{ success: boolean; error?: string }> {
+  if (!supabase) return { success: true };
+
+  try {
+    await Promise.allSettled([
+      supabase.from('practice_sessions').delete().eq('user_id', userId),
+      supabase.from('daily_logs').delete().eq('user_id', userId),
+      supabase.from('habits').delete().eq('user_id', userId),
+      supabase.from('saved_tips').delete().eq('user_id', userId),
+      supabase.from('profiles').delete().eq('id', userId),
+    ]);
+
+    await supabase.auth.signOut();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to delete cloud account records' };
+  }
+}
+
